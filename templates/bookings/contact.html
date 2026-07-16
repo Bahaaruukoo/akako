@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Contact & Help | Akako House{% endblock %}
+{% block content %}
+<main class="contact-page">
+  <section class="contact-hero"><a class="portal-brand" href="{% url 'home' %}">Akako House</a><p class="eyebrow">Contact &amp; help</p><h1>Talk directly with our team.</h1><p>For questions, unusual ceremony requests, scheduling concerns, or payment issues, contact Akako House and include the customer name and ceremony date when available.</p></section>
+  <section class="contact-card-grid">
+    <article class="contact-card"><span class="contact-card-label">Phone</span>{% if support_phone_display and support_phone_tel %}<a class="contact-primary-action" href="tel:{{ support_phone_tel }}">{{ support_phone_display }}</a><p>Tap the number on mobile to call.</p>{% elif support_phone_display %}<strong>{{ support_phone_display }}</strong>{% else %}<strong>Phone number coming soon</strong><p>Please use email until the business number is published.</p>{% endif %}</article>
+    <article class="contact-card"><span class="contact-card-label">Email</span>{% if support_email %}<a class="contact-primary-action" href="mailto:{{ support_email }}">{{ support_email }}</a>{% else %}<strong>Email address coming soon</strong>{% endif %}<p>Best for non-urgent questions and written payment details.</p></article>
+    <article class="contact-card"><span class="contact-card-label">Service hours</span><strong>{{ support_hours }}</strong><p>Messages received outside service hours will be handled as soon as the team is available.</p></article>
+  </section>
+  <section class="contact-urgent-panel"><p class="eyebrow">Ceremony within 24 hours</p><h2>Contact us as soon as possible.</h2><p>{{ support_urgent_message }}</p>{% if support_phone_display and support_phone_tel %}<a class="button primary" href="tel:{{ support_phone_tel }}">Call Now</a>{% elif support_email %}<a class="button primary" href="mailto:{{ support_email }}">Email Akako House</a>{% endif %}</section>
+  <section class="contact-guidance"><h2>What to include</h2><ul><li>Your name and preferred callback number</li><li>The ceremony date and location</li><li>The quote or payment reference, if applicable</li><li>A short description of the issue or exceptional request</li></ul><a class="button secondary" href="{% url 'home' %}">Return Home</a></section>
+</main>
+{% endblock %}

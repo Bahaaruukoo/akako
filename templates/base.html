@@ -1,0 +1,22 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Buna Ceremony{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/site.css' %}">
+</head>
+<body>
+  {% block content %}{% endblock %}
+  {% include "bookings/_site_footer.html" %}
+  <script>
+    document.addEventListener("click", function (event) {
+      const action = event.target.closest("[data-confirm]");
+      if (action && !window.confirm(action.dataset.confirm)) {
+        event.preventDefault();
+      }
+    });
+  </script>
+</body>
+</html>

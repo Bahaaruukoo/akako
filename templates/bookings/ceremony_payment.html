@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Ceremony Payment | Akako House{% endblock %}
+
+{% block content %}
+<main class="quote-flow-page payment-choice-page">
+  <section class="quote-flow-panel payment-choice-panel">
+    <a class="mini-brand" href="{% url 'home' %}">Buna<span>Go</span></a>
+    {% if messages %}<div class="messages">{% for message in messages %}<p>{{ message }}</p>{% endfor %}</div>{% endif %}
+    {% if checkout_success %}<div class="payment-return-note success"><strong>Thank you.</strong><p>Your payment is being securely confirmed. This page updates after confirmation.</p></div>{% endif %}
+    {% if checkout_cancelled %}<div class="payment-return-note"><strong>Payment not completed.</strong><p>No charge was recorded. You can choose an option below when ready.</p></div>{% endif %}
+
+    <p class="eyebrow">Secure ceremony payment</p>
+    <h1>Choose how you would like to pay.</h1>
+    <p class="payment-intro">{{ quote_request.customer_name }}, your ceremony is scheduled for {{ quote_request.event_date }}. You may reserve it with the deposit or settle the complete balance now.</p>
+
+    <div class="customer-payment-summary">
+      <div><span>Total ceremony quote</span><strong>${{ quote_request.quoted_amount }}</strong></div>
+      <div><span>Outstanding today</span><strong>${{ outstanding }}</strong></div>
+    </div>
+
+    <div class="payment-option-grid">
+      {% if deposit.status != deposit.Status.PAID and deposit.status != deposit.Status.WAIVED %}
+        <article><p class="eyebrow">Reserve the date</p><h2>Pay deposit</h2><strong>${{ deposit.expected_amount }}</strong><p>Pay the initial deposit now. The final balance remains due {{ final_payment.due_at }}.</p><form method="post" action="{% url 'start_payment_checkout' ceremony.public_id 'deposit' %}">{% csrf_token %}<button class="button secondary full" type="submit"{% if not checkout_enabled %} disabled{% endif %}>Pay Deposit</button></form></article>
+      {% endif %}
+      {% if outstanding > 0 %}
+        <article class="recommended"><p class="eyebrow">One payment</p><h2>Pay in full</h2><strong>${{ outstanding }}</strong><p>Settle the deposit and remaining balance together in one secure transaction.</p><form method="post" action="{% url 'start_payment_checkout' ceremony.public_id 'full' %}">{% csrf_token %}<button class="button primary full" type="submit"{% if not checkout_enabled %} disabled{% endif %}>Pay Full Amount</button></form></article>
+      {% endif %}
+      {% if deposit.status == deposit.Status.PAID and final_payment.status != final_payment.Status.PAID and final_payment.status != final_payment.Status.WAIVED %}
+        <article><p class="eyebrow">Remaining balance</p><h2>Pay final balance</h2><strong>${{ final_payment.expected_amount }}</strong><p>Your deposit is recorded. Complete the remaining balance before the deadline.</p><form method="post" action="{% url 'start_payment_checkout' ceremony.public_id 'final' %}">{% csrf_token %}<button class="button primary full" type="submit"{% if not checkout_enabled %} disabled{% endif %}>Pay Final Balance</button></form></article>
+      {% endif %}
+    </div>
+    {% if not coverage_confirmed %}<p class="checkout-disabled-note">Payment is temporarily paused while Akako House reconfirms the ceremony partner. You will not lose your place in the request queue.</p>{% elif not checkout_enabled %}<p class="checkout-disabled-note">Online checkout is not active yet. Please contact Akako House to arrange payment.</p>{% endif %}
+    {% if outstanding == 0 %}<div class="payment-return-note success"><strong>Paid in full</strong><p>No payment is currently due.</p></div>{% endif %}
+  </section>
+</main>
+{% endblock %}

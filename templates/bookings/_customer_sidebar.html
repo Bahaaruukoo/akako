@@ -1,0 +1,10 @@
+<aside class="sidebar customer-sidebar">
+  <a class="brand" href="{% url 'customer_dashboard' %}">Akako House Customer</a>
+  <nav class="side-nav" aria-label="Customer workspace navigation">
+    <a{% if active_nav == 'workspace' %} class="active"{% endif %} href="{% url 'customer_dashboard' %}">My Ceremonies</a>
+    <a href="{% url 'notification_center' %}"><span>Notifications</span>{% if unread_notification_count %}<span class="nav-alert-badge">{{ unread_notification_count }}</span>{% endif %}</a>
+    <a{% if active_nav == 'profile' %} class="active"{% endif %} href="{% url 'customer_profile' %}">Profile &amp; Addresses</a>
+    <a href="{% url 'account_email' %}">Account Email</a>
+    <form method="post" action="{% url 'partner_logout' %}">{% csrf_token %}<button class="side-nav-button" type="submit">Logout</button></form>
+  </nav>
+</aside>

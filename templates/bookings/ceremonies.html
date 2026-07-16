@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Ceremonies | Akako House{% endblock %}
+
+{% block content %}
+<div class="app-shell">
+  {% include "bookings/_dashboard_sidebar.html" with active_nav="ceremonies" %}
+  <main class="dashboard">
+    <header class="dashboard-header">
+      <div><p class="eyebrow">Delivery operations</p><h1>Ceremonies</h1><p class="workspace-subtitle">Track every accepted booking from deposit through final outcome.</p></div>
+    </header>
+    {% if messages %}<div class="messages workspace-messages">{% for message in messages %}<p>{{ message }}</p>{% endfor %}</div>{% endif %}
+    <section class="work-panel">
+      <form class="list-toolbar" method="get">
+        <label><span class="sr-only">Search ceremonies</span><input type="search" name="q" value="{{ search }}" placeholder="Search customer, location, or partner"></label>
+        <label><span class="sr-only">Filter status</span><select name="status"><option value="">All stages</option>{% for value, label in status_choices %}<option value="{{ value }}"{% if selected_status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+        <button class="button secondary" type="submit">Filter</button>
+        {% if search or selected_status %}<a class="table-link muted" href="{% url 'ceremonies' %}">Clear</a>{% endif %}
+      </form>
+      <div class="table">
+        <div class="table-row ceremony-list-row table-head"><span>Customer</span><span>Date</span><span>Location</span><span>Stage</span><span>Deposit</span><span>Final</span><span>Partner</span><span>Action</span></div>
+        {% for item in ceremonies %}
+          <div class="table-row ceremony-list-row">
+            <span><strong>{{ item.quote.customer_name }}</strong><small>{{ item.quote.email }}</small></span>
+            <span>{{ item.quote.event_date }}<small>{{ item.quote.event_time|default:"Time pending" }}</small></span>
+            <span>{{ item.quote.location }}</span>
+            <span><mark>{{ item.get_status_display }}</mark></span>
+            <span>{{ item.deposit_payment.get_status_display }}</span>
+            <span>{{ item.final_payment.get_status_display }}</span>
+            <span>{{ item.assigned_partner|default:"Unassigned" }}</span>
+            <span><a class="table-link" href="{% url 'ceremony_detail' item.public_id %}">{% if item.terminal %}View Frozen Record{% else %}Open Workspace{% endif %}</a></span>
+          </div>
+        {% empty %}<p class="empty-state">No accepted ceremonies yet.</p>{% endfor %}
+      </div>
+    </section>
+  </main>
+</div>
+{% endblock %}

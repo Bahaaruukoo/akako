@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Request Received | Buna Ceremony{% endblock %}
+
+{% block content %}
+<main class="center-page">
+  <section class="success-panel">
+    <p class="eyebrow">Request received</p>
+    <h1>We will review your ceremony details and send a custom quote.</h1>
+    <p>
+      Your date is not reserved yet. Once you approve the quote and complete payment,
+      we will match the booking with a trusted Cultural Ambassador.
+    </p>
+    <dl class="success-summary">
+      <div><dt>Name</dt><dd>{{ quote_request.customer_name }}</dd></div>
+      <div><dt>Event</dt><dd>{{ quote_request.get_event_type_display }}</dd></div>
+      <div><dt>Date</dt><dd>{{ quote_request.event_date }}</dd></div>
+      <div><dt>Location</dt><dd>{{ quote_request.location }}</dd></div>
+      <div><dt>Guests</dt><dd>{{ quote_request.guest_count }}</dd></div>
+    </dl>
+    <a class="button primary" href="{% url 'home' %}">Back to Home</a>
+  </section>
+</main>
+{% endblock %}

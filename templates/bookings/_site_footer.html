@@ -1,0 +1,8 @@
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <div class="footer-brand-block"><a class="footer-brand" href="{% url 'home' %}">Akako House</a><p>Authentic Ethiopian coffee ceremonies at your location.</p><a href="https://akakohouse.com">akakohouse.com</a></div>
+    <div class="footer-contact-block"><strong>Need help?</strong>{% if support_phone_display and support_phone_tel %}<a class="footer-call-link" href="tel:{{ support_phone_tel }}">Call {{ support_phone_display }}</a>{% elif support_phone_display %}<span>{{ support_phone_display }}</span>{% endif %}{% if support_email %}<a href="mailto:{{ support_email }}">{{ support_email }}</a>{% endif %}<small>{{ support_hours }}</small></div>
+    <div class="footer-help-block"><strong>Time-sensitive ceremony?</strong><p>{{ support_urgent_message }}</p><a href="{% url 'contact' %}">Contact &amp; Help Details</a></div>
+  </div>
+  <div class="site-footer-bottom"><span>&copy; {% now "Y" %} Akako House</span><nav class="footer-bottom-links" aria-label="Footer navigation"><a href="{% url 'about' %}">About Us</a><a href="{% url 'shop' %}">Shop</a><a href="{% url 'home' %}#faq">FAQ</a><a href="{% url 'contact' %}">Contact</a></nav></div>
+</footer>

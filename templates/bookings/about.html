@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}About Akako House{% endblock %}
+{% block content %}
+<main class="about-page">
+  <article class="about-story">
+    <header class="about-hero">
+      <a class="portal-brand" href="{% url 'home' %}">Akako House</a>
+      <p class="eyebrow">About Akako House</p>
+      <h1>Where Every Cup Tells the Story of a Beginning</h1>
+    </header>
+
+    <section class="about-editorial about-introduction">
+      <div class="about-editorial-copy">
+        <p>Long before coffee became the world's favorite beverage, its story began in the lush highlands of Ethiopia.</p>
+        <p>It was here that coffee was discovered, cultivated, and shared—not as a product, but as a tradition that brought families, neighbors, and communities together.</p>
+        <p>At Akako House, we believe coffee is more than what fills a cup. It is a story, a ritual, and an invitation to slow down, connect, and celebrate the people around us.</p>
+        <p>Our mission is to bring that timeless experience to modern gatherings through the authentic Ethiopian Coffee Ceremony.</p>
+      </div>
+      <figure class="about-cup-figure">
+        <img src="{% static 'images/akako-coffee-cup.png' %}" alt="A traditional decorated cup filled with Ethiopian coffee" width="1400" height="1400">
+      </figure>
+    </section>
+
+    <blockquote class="about-pull-quote">
+      <p>Coffee is never simply served.<br>It is shared.</p>
+    </blockquote>
+
+    <section class="about-section about-name-story">
+      <p class="eyebrow">The name behind the house</p>
+      <h2>The Meaning of Akako</h2>
+      <p>In the Oromo language, <strong>ako</strong> means grandmother and <strong>akakayu</strong> means grandfather. <strong>Akako</strong> brings the two together—the grandparents who carry family memory, inherited wisdom, hospitality, and traditions from one generation to the next.</p>
+      <p>Akako House is inspired by that enduring connection: a place where heritage is welcomed, stories are shared, and every gathering feels rooted in something greater than the moment itself.</p>
+    </section>
+
+    <section class="about-editorial about-origin{% if not origin_photo %} about-editorial-without-photo{% endif %}">
+      {% if origin_photo %}
+        <figure class="about-story-figure">
+          <img src="{{ origin_photo.image.url }}" alt="{{ origin_photo.alt_text }}" loading="lazy">
+          {% if origin_photo.photographer_credit %}<figcaption>Photography: {{ origin_photo.photographer_credit }}</figcaption>{% endif %}
+        </figure>
+      {% endif %}
+      <div class="about-editorial-copy">
+        <p class="eyebrow">The birthplace of coffee</p>
+        <h2>A Land of Origins</h2>
+        <p>Ethiopia holds a unique place in human history. It is recognized as one of the world's oldest civilizations and home to some of the earliest discoveries that help tell the story of modern humanity.</p>
+        <p>It is also widely recognized as the birthplace of Arabica coffee—the coffee enjoyed across the globe today.</p>
+        <p>For generations, Ethiopian families have welcomed guests with the Coffee Ceremony, a symbol of hospitality, friendship, respect, and community. Every roast, every aroma, and every cup carries forward a tradition that has connected people for centuries.</p>
+      </div>
+    </section>
+
+    <section class="about-section about-ceremony-copy">
+      <p class="eyebrow">A living ritual</p>
+      <h2>More Than Coffee</h2>
+      <p>The Ethiopian Coffee Ceremony is unlike simply serving coffee.</p>
+      <p>Green coffee beans are roasted fresh before your guests, filling the room with an unforgettable aroma. The beans are carefully ground by hand and brewed in a traditional clay pot known as a <strong>Jebena</strong>.</p>
+      <p>As the coffee is served, stories are shared, conversations begin, and strangers often become friends.</p>
+      <p>The ceremony unfolds slowly, reminding us that some of life's most meaningful moments cannot be rushed.</p>
+    </section>
+
+    <section class="about-editorial about-gathering">
+      <figure class="about-story-figure about-gathering-figure">
+        {% if ceremony_photo %}
+          <img src="{{ ceremony_photo.image.url }}" alt="{{ ceremony_photo.alt_text }}" loading="lazy">
+          {% if ceremony_photo.photographer_credit %}<figcaption>Photography: {{ ceremony_photo.photographer_credit }}</figcaption>{% endif %}
+        {% else %}
+          <img src="{% static 'images/akako-coffee-pouring.jpg' %}" alt="A cultural ambassador pouring Ethiopian coffee from a Jebena for a guest" width="887"  loading="lazy">
+        {% endif %}
+      </figure>
+      <div class="about-editorial-copy">
+        <p class="eyebrow">From our heritage to your table</p>
+        <h2>Bringing Ethiopia to Your Gathering</h2>
+        <p>Whether you're hosting a corporate event, wedding, university program, private celebration, or cultural gathering, our Cultural Ambassadors bring an authentic Ethiopian Coffee Ceremony directly to your venue.</p>
+        <p>Every experience is thoughtfully prepared with traditional equipment, elegant presentation, and genuine hospitality, allowing your guests to experience one of the world's oldest coffee traditions exactly where they are.</p>
+      </div>
+    </section>
+
+    <section class="about-section about-quiet-section">
+      <p class="eyebrow">Looking forward</p>
+      <h2>Our Vision</h2>
+      <p>Our vision extends beyond serving coffee.</p>
+      <p>We aspire to preserve, celebrate, and share Ethiopia's rich cultural heritage with communities across America—one gathering, one conversation, and one ceremony at a time.</p>
+      <div class="about-refrain"><p>Every event creates new connections.</p><p>Every guest discovers a story.</p><p>Every cup honors a tradition that began thousands of years ago.</p></div>
+    </section>
+
+    <section class="about-section about-quiet-section">
+      <p class="eyebrow">What we carry forward</p>
+      <h2>Our Promise</h2>
+      <p>When you invite Akako House to your event, you are not simply booking a coffee service.</p>
+      <p>You are welcoming a living tradition.</p>
+      <p>You are creating an experience your guests will remember long after the final cup has been served.</p>
+    </section>
+
+    <footer class="about-closing">
+      <p><strong>Welcome to Akako House.</strong></p>
+      <p><strong>Where coffee returns to its roots, and every gathering becomes a story worth sharing.</strong></p>
+    </footer>
+  </article>
+</main>
+{% endblock %}

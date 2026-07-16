@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Assigned Task | Akako House{% endblock %}
+{% block content %}
+<div class="app-shell">
+  {% include "bookings/_partner_sidebar.html" with active_nav="workspace" %}
+  <main class="dashboard">
+    <header class="dashboard-header"><div><p class="eyebrow">Assigned ceremony</p><h1>{{ task.ceremony.quote.event_date }} · {{ task.ceremony.quote.event_time|default:"Time pending" }}</h1><p class="workspace-subtitle">{{ task.ceremony.quote.location }}</p></div><mark>{{ task.get_status_display }}</mark></header>
+    {% if messages %}{% for message in messages %}<p class="notice {{ message.tags }}">{{ message }}</p>{% endfor %}{% endif %}
+    <div class="ceremony-grid">
+      <section class="work-panel ceremony-main">
+        <p class="eyebrow">Service details</p><h2>{{ task.ceremony.quote.get_event_type_display }}</h2>
+        <dl class="success-summary"><div><dt>Customer</dt><dd>{{ task.ceremony.quote.customer_name }}</dd></div><div><dt>Phone</dt><dd>{{ task.ceremony.quote.phone }}</dd></div><div><dt>Guests</dt><dd>{{ task.ceremony.quote.guest_count }}</dd></div><div><dt>Milk</dt><dd>{{ task.ceremony.quote.get_milk_preference_display }}</dd></div><div><dt>Snack service</dt><dd>{{ task.ceremony.quote.get_snack_style_display }}</dd></div><div><dt>Location</dt><dd>{{ task.ceremony.quote.location }}</dd></div></dl>
+        {% if task.ceremony.quote.allergies %}<div class="quote-notes"><h3>Allergies and dietary notes</h3><p>{{ task.ceremony.quote.allergies|linebreaksbr }}</p></div>{% endif %}
+        <form method="post" action="{% url 'partner_task_update' task.pk %}" class="task-status-form">{% csrf_token %}
+          <label>Work notes<textarea name="partner_notes" rows="3">{{ task.partner_notes }}</textarea></label>
+          <div class="quote-editor-actions">
+            {% if task.status == task.Status.ASSIGNED %}<button class="button primary" name="status" value="accepted" data-confirm="Accept this ceremony assignment?">Accept Task</button><button class="button secondary" name="status" value="issue">Report Issue</button>
+            {% elif task.status == task.Status.ACCEPTED %}<button class="button primary" name="status" value="in_progress" data-confirm="Confirm that work is now in progress?">Start Task</button><button class="button secondary" name="status" value="issue">Report Issue</button>
+            {% elif task.status == task.Status.IN_PROGRESS %}<button class="button completion-button" name="status" value="delivered" data-confirm="Confirm you delivered this ceremony?">Mark Delivered</button><button class="button secondary" name="status" value="issue">Report Issue</button>
+            {% elif task.status == task.Status.ISSUE %}<button class="button primary" name="status" value="accepted">Issue Resolved — Accept</button><button class="button secondary" name="status" value="in_progress">Issue Resolved — Resume</button>
+            {% else %}<p class="form-help">This partner status is final. Akako House staff will complete the operational review.</p>{% endif %}
+            {% if task.status != task.Status.DELIVERED and task.status != task.Status.CANCELLED %}<button class="button danger" name="status" value="cancelled" data-confirm="Confirm you cannot complete this ceremony? Akako House staff will be alerted to find replacement coverage.">Withdraw From Task</button>{% endif %}
+          </div>
+        </form>
+      </section>
+      <aside class="work-panel ceremony-side"><p class="eyebrow">Partner payout</p><h2>{% if task.payout %}${{ task.payout.amount|floatformat:2 }}{% else %}$0.00{% endif %}</h2><p>{% if task.payout %}{{ task.payout.get_status_display }}{% else %}Not ready{% endif %}</p>{% if task.payout.reference %}<small>Reference: {{ task.payout.reference }}</small>{% endif %}<div class="history-list"><p class="eyebrow">Task timeline</p>{% if task.accepted_at %}<article><strong>Accepted</strong><small>{{ task.accepted_at }}</small></article>{% endif %}{% if task.started_at %}<article><strong>Started</strong><small>{{ task.started_at }}</small></article>{% endif %}{% if task.delivered_at %}<article><strong>Delivered</strong><small>{{ task.delivered_at }}</small></article>{% endif %}</div></aside>
+    </div>
+  </main>
+</div>
+{% endblock %}

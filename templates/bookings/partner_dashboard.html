@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Partner Workspace | Akako House{% endblock %}
+{% block content %}
+<div class="app-shell">
+  {% include "bookings/_partner_sidebar.html" with active_nav="workspace" %}
+  <main class="dashboard">
+    <header class="dashboard-header"><div><p class="eyebrow">Partner workspace</p><h1>Hello, {{ partner.contact_name }}</h1><p class="workspace-subtitle">Manage availability, assignments, and payouts.</p></div><span class="application-badge status-{{ partner.application_status }}">{{ partner.get_application_status_display }}</span></header>
+    {% if messages %}{% for message in messages %}<p class="notice {{ message.tags }}">{{ message }}</p>{% endfor %}{% endif %}
+    {% if partner.application_status != partner.ApplicationStatus.APPROVED %}<section class="review-banner"><strong>Your application is {{ partner.get_application_status_display|lower }}.</strong><p>{% if partner.application_status == partner.ApplicationStatus.NEEDS_INFO %}Please review staff notes and add the requested documents.{% else %}Assignments begin after approval and verification.{% endif %}</p></section>{% endif %}
+    <section class="metric-grid partner-metrics"><article><span>Assigned Tasks</span><strong>{{ tasks|length }}</strong></article><article><span>Availability Requests</span><strong>{{ availability_offers|length }}</strong></article><article><span>Pending Payouts</span><strong>${{ pending_total|floatformat:2 }}</strong></article><article><span>Total Paid</span><strong>${{ paid_total|floatformat:2 }}</strong></article></section>
+
+    <section class="work-panel">
+      <div class="section-heading"><div><p class="eyebrow">Action needed</p><h2>Availability requests</h2></div><a class="button secondary" href="{% url 'partner_availability' %}">Update Calendar</a></div>
+      <div class="partner-task-list">
+        {% for offer in availability_offers %}
+          <article class="partner-task-card availability-offer-card">
+            <span><strong>{{ offer.quote.event_date }} · {{ offer.quote.event_time }}</strong><small>{{ offer.quote.location }} · {{ offer.quote.guest_count }} guests · respond by {{ offer.expires_at }}</small></span>
+            <form method="post" action="{% url 'partner_offer_response' offer.pk 'accept' %}">{% csrf_token %}<input name="response_notes" placeholder="Optional note"><button class="button primary" type="submit" data-confirm="Confirm that you can reserve this time?">Accept</button></form>
+            <form method="post" action="{% url 'partner_offer_response' offer.pk 'decline' %}">{% csrf_token %}<button class="button secondary" type="submit" data-confirm="Decline this availability request?">Decline</button></form>
+          </article>
+        {% empty %}<p class="empty-state">No availability requests need your response.</p>{% endfor %}
+      </div>
+    </section>
+
+    <section class="work-panel"><div class="section-heading"><div><p class="eyebrow">My work</p><h2>Assigned ceremonies</h2></div></div><div class="partner-task-list">{% for task in tasks %}<a class="partner-task-card" href="{% url 'partner_task_detail' task.pk %}"><span><strong>{{ task.ceremony.quote.event_date }} · {{ task.ceremony.quote.event_time|default:"Time pending" }}</strong><small>{{ task.ceremony.quote.location }}</small></span><mark>{{ task.get_status_display }}</mark></a>{% empty %}<p class="empty-state">No ceremonies are assigned yet.</p>{% endfor %}</div></section>
+    <section class="work-panel"><div class="section-heading"><div><p class="eyebrow">Compensation</p><h2>Recent payout records</h2></div></div><div class="payout-list">{% for payout in recent_payouts %}<article><span><strong>${{ payout.amount|floatformat:2 }}</strong><small>{{ payout.task.ceremony.quote.event_date }} ceremony</small></span><mark>{{ payout.get_status_display }}</mark></article>{% empty %}<p class="empty-state">Payout records appear when a task is assigned.</p>{% endfor %}</div></section>
+  </main>
+</div>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Complete Request | Akako House{% endblock %}
+
+{% block content %}
+<main class="quote-flow-page">
+  <section class="quote-flow-panel">
+    <a class="mini-brand" href="{% url 'home' %}">Buna<span>Go</span></a>
+    <p class="eyebrow">Almost done</p>
+    <h1>Where should we send your ceremony quote?</h1>
+    <p class="quote-summary">
+      {{ quote_request.get_event_type_display }} for {{ quote_request.guest_count }} guests in
+      {{ quote_request.location }} on {{ quote_request.event_date }}.
+    </p>
+
+    <form method="post" class="detail-form">
+      {% csrf_token %}
+      <div class="detail-grid">
+        {% for field in form %}
+          <label class="{% if field.name == 'allergies' or field.name == 'notes' %}wide{% endif %} {% if field.name == 'indoor' %}checkbox-row{% endif %}">
+            {% if field.name == 'indoor' %}
+              {{ field }}
+              <span>Indoor setup</span>
+            {% else %}
+              <span>{{ field.label }}</span>
+              {{ field }}
+            {% endif %}
+            {% if field.errors %}
+              <strong>{{ field.errors|striptags }}</strong>
+            {% endif %}
+          </label>
+        {% endfor %}
+      </div>
+      <button class="button primary full" type="submit">Finish Request</button>
+    </form>
+  </section>
+</main>
+{% endblock %}

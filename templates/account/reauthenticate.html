@@ -1,0 +1,3 @@
+{% extends "base.html" %}
+{% block title %}Confirm Your Password | Akako House{% endblock %}
+{% block content %}<main class="portal-auth-page"><section class="portal-auth-card login-card"><a class="portal-brand" href="{% url 'home' %}">Akako House</a><p class="eyebrow">Security check</p><h1>Confirm it is you</h1><p class="workspace-subtitle">Enter your password again before making this sensitive account change.</p><form method="post" action="{% url 'account_reauthenticate' %}" class="portal-form">{% csrf_token %}{{ form.as_p }}<button class="button primary" type="submit">Confirm</button></form></section></main>{% endblock %}

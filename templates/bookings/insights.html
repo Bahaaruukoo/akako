@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Business Insights | Akako House{% endblock %}
+
+{% block content %}
+<div class="app-shell">
+  {% include "bookings/_dashboard_sidebar.html" with active_nav="insights" %}
+  <main class="dashboard insights-dashboard">
+    <header class="dashboard-header">
+      <div><p class="eyebrow">Business intelligence</p><h1>Business insights</h1><p class="workspace-subtitle">{{ period_label }} · Results are grouped by ceremony event date.</p></div>
+    </header>
+
+    {% if messages %}<div class="messages workspace-messages">{% for message in messages %}<p>{{ message }}</p>{% endfor %}</div>{% endif %}
+
+    <section class="insight-filter" aria-label="Reporting period">
+      <div class="period-links">
+        <a{% if period == 'week' %} class="active"{% endif %} href="?period=week">This Week</a>
+        <a{% if period == 'month' %} class="active"{% endif %} href="?period=month">This Month</a>
+        <a{% if period == '30days' %} class="active"{% endif %} href="?period=30days">Last 30 Days</a>
+      </div>
+      <form method="get" class="custom-range-form"><input type="hidden" name="period" value="custom"><label>From<input type="date" name="start" value="{{ start_date|date:'Y-m-d' }}" required></label><label>To<input type="date" name="end" value="{{ end_date|date:'Y-m-d' }}" required></label><button class="button secondary" type="submit">Apply Range</button></form>
+    </section>
+
+    <section class="insight-card-grid" aria-label="Business totals">
+      <article><span>Ceremony Requests</span><strong>{{ metrics.requested }}</strong><small>{{ metrics.acceptance_rate|floatformat:1 }}% accepted</small></article>
+      <article><span>Accepted</span><strong>{{ metrics.accepted }}</strong><small>Converted to ceremonies</small></article>
+      <article><span>Completed</span><strong>{{ metrics.completed }}</strong><small>{{ metrics.completion_rate|floatformat:1 }}% completion rate</small></article>
+      <article><span>Failed / Cancelled</span><strong>{{ metrics.failed|add:metrics.cancelled }}</strong><small>{{ metrics.no_show }} no-show{{ metrics.no_show|pluralize }}</small></article>
+    </section>
+
+    <div class="insight-donut-grid">
+      <section class="work-panel donut-card">
+        <div class="section-heading"><div><p class="eyebrow">Requests</p><h2>Request pipeline</h2></div></div>
+        {% include "bookings/_insight_donut.html" with chart=request_chart title="Request pipeline" %}
+      </section>
+      <section class="work-panel donut-card">
+        <div class="section-heading"><div><p class="eyebrow">Ceremonies</p><h2>Ceremony outcomes</h2></div></div>
+        {% include "bookings/_insight_donut.html" with chart=ceremony_chart title="Ceremony outcomes" %}
+      </section>
+      <section class="work-panel donut-card">
+        <div class="section-heading"><div><p class="eyebrow">Income</p><h2>Income status</h2></div></div>
+        {% include "bookings/_insight_donut.html" with chart=income_chart title="Income status" %}
+        <p class="quoted-footnote">Total quoted: <strong>${{ metrics.quoted_total|floatformat:2 }}</strong></p>
+      </section>
+    </div>
+
+    <section class="work-panel comparison-panel">
+      <div class="section-heading"><div><p class="eyebrow">Volume comparison</p><h2>Lifecycle counts</h2></div></div>
+      <div class="comparison-bars">
+        <div><span>Requested</span><i style="--bar-value: {% widthratio metrics.requested metrics.requested|default:1 100 %}%"></i><strong>{{ metrics.requested }}</strong></div>
+        <div><span>Accepted</span><i style="--bar-value: {% widthratio metrics.accepted metrics.requested|default:1 100 %}%"></i><strong>{{ metrics.accepted }}</strong></div>
+        <div><span>Completed</span><i style="--bar-value: {% widthratio metrics.completed metrics.requested|default:1 100 %}%"></i><strong>{{ metrics.completed }}</strong></div>
+        <div><span>Failed</span><i class="danger" style="--bar-value: {% widthratio metrics.failed metrics.requested|default:1 100 %}%"></i><strong>{{ metrics.failed }}</strong></div>
+        <div><span>Cancelled</span><i class="cancelled" style="--bar-value: {% widthratio metrics.cancelled metrics.requested|default:1 100 %}%"></i><strong>{{ metrics.cancelled }}</strong></div>
+      </div>
+    </section>
+  </main>
+</div>
+{% endblock %}

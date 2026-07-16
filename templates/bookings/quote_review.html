@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Review Quote | Akako House{% endblock %}
+
+{% block content %}
+<main class="quote-flow-page">
+  <section class="quote-flow-panel quote-review-panel">
+    <a class="mini-brand" href="{% url 'home' %}">Buna<span>Go</span></a>
+    {% if messages %}
+      <div class="messages">
+        {% for message in messages %}
+          <p>{{ message }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <p class="eyebrow">Ceremony quote</p>
+    <h1>Your custom quote is ready.</h1>
+
+    {% if quote_request.quoted_amount %}
+      <div class="quote-price">
+        <span>Total Quote</span>
+        <strong>${{ quote_request.quoted_amount }}</strong>
+      </div>
+    {% else %}
+      <div class="quote-price pending">
+        <span>Status</span>
+        <strong>Quote pending</strong>
+      </div>
+    {% endif %}
+
+    <dl class="success-summary">
+      <div><dt>Name</dt><dd>{{ quote_request.customer_name }}</dd></div>
+      <div><dt>Event</dt><dd>{{ quote_request.get_event_type_display }}</dd></div>
+      <div><dt>Date</dt><dd>{{ quote_request.event_date }}{% if quote_request.event_time %} at {{ quote_request.event_time }}{% endif %}</dd></div>
+      <div><dt>Location</dt><dd>{{ quote_request.location }}</dd></div>
+      <div><dt>Guests</dt><dd>{{ quote_request.guest_count }}</dd></div>
+      {% if quote_request.deposit_amount %}
+        <div><dt>Deposit</dt><dd>${{ quote_request.deposit_amount }}</dd></div>
+      {% endif %}
+      {% if quote_request.quote_expires_at %}
+        <div><dt>Expires</dt><dd>{{ quote_request.quote_expires_at }}</dd></div>
+      {% endif %}
+    </dl>
+
+    {% if quote_request.quote_notes %}
+      <div class="quote-notes">
+        <h2>Notes from Akako House</h2>
+        <p>{{ quote_request.quote_notes|linebreaksbr }}</p>
+      </div>
+    {% endif %}
+
+    {% if quote_request.status == quote_request.Status.QUOTED and not quote_request.quote_expired %}
+      <div class="quote-actions">
+        <form method="post" action="{% url 'quote_decision' quote_request.public_id 'accept' %}">
+          {% csrf_token %}
+          <button class="button primary" type="submit" data-confirm="Accept this quote and continue to payment options? The accepted quote will be locked.">Accept Quote</button>
+        </form>
+        <form method="post" action="{% url 'quote_decision' quote_request.public_id 'decline' %}">
+          {% csrf_token %}
+          <button class="button partner-button" type="submit" data-confirm="Decline this quote?">Decline</button>
+        </form>
+      </div>
+    {% elif quote_request.status == quote_request.Status.ACCEPTED %}
+      <p class="decision-note">You accepted this quote. We will follow up with payment and scheduling details.</p>
+      {% if quote_request.ceremony %}<a class="button primary full" href="{% url 'ceremony_payment' quote_request.ceremony.public_id %}">Continue to Payment Options</a>{% endif %}
+    {% elif quote_request.status == quote_request.Status.DECLINED %}
+      <p class="decision-note">You declined this quote.</p>
+    {% elif quote_request.status == quote_request.Status.EXPIRED %}
+      <p class="decision-note">This quote has expired. Please request an updated quote.</p>
+    {% endif %}
+  </section>
+</main>
+{% endblock %}

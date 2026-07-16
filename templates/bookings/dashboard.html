@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Operations Dashboard | Akako House{% endblock %}
+
+{% block content %}
+<div class="app-shell">
+  {% include "bookings/_dashboard_sidebar.html" with active_nav="overview" %}
+  <main class="dashboard">
+    <header class="dashboard-header">
+      <div>
+        <p class="eyebrow">Operations</p>
+        <h1>Today's ceremony desk</h1>
+        <p class="workspace-subtitle">Quotes, payments, assignments, and delivery are tracked as separate stages.</p>
+      </div>
+      <div class="dashboard-header-actions">
+        <a class="button primary" href="{% url 'business_insights' %}">View Business Insights</a>
+        <a class="button secondary" href="{% url 'home' %}">Open Booking Form</a>
+      </div>
+    </header>
+
+    {% if messages %}<div class="messages workspace-messages">{% for message in messages %}<p>{{ message }}</p>{% endfor %}</div>{% endif %}
+
+    <section class="metric-grid lifecycle-metrics" aria-label="Lifecycle summary">
+      <article><span>Quotes to Prepare</span><strong>{{ quote_counts.new|default:0 }}</strong></article>
+      <article><span>Awaiting Deposit</span><strong>{{ ceremony_counts.awaiting_deposit|default:0 }}</strong></article>
+      <article><span>Awaiting Partner</span><strong>{{ ceremony_counts.awaiting_partner|default:0 }}</strong></article>
+      <article><span>Payment Overdue</span><strong>{{ ceremony_counts.at_risk|default:0 }}</strong></article>
+      <article><span>Ready</span><strong>{{ ceremony_counts.ready|default:0 }}</strong></article>
+      <article><span>Completed</span><strong>{{ ceremony_counts.completed|default:0 }}</strong></article>
+      <article><span>Active Partners</span><strong>{{ active_partners }}</strong></article>
+      <article><span>Compliance Needs</span><strong>{{ compliance_attention }}</strong></article>
+    </section>
+
+    <div class="dashboard-queue-grid">
+      <section class="work-panel queue-panel">
+        <div class="section-heading"><h2>Partner applications</h2><a href="{% url 'partners' %}">View all</a></div>
+        {% for item in pending_partner_applications %}<a class="queue-item" href="{% url 'manage_partner' item.pk %}"><span><strong>{{ item.name }}</strong><small>{{ item.get_application_status_display }} · {{ item.service_area }}</small></span><b>Review</b></a>{% empty %}<p class="empty-state">No partner applications need review.</p>{% endfor %}
+      </section>
+
+      <section class="work-panel queue-panel">
+        <div class="section-heading"><h2>Documents expiring soon</h2><a href="{% url 'partners' %}">View partners</a></div>
+        {% for item in expiring_documents %}<a class="queue-item" href="{% url 'manage_partner' item.partner.pk %}"><span><strong>{{ item.partner.name }}</strong><small>{{ item.get_document_type_display }} · {{ item.expiry_date }}</small></span><b>Review</b></a>{% empty %}<p class="empty-state">No documents expire within the warning period.</p>{% endfor %}
+      </section>
+
+      <section class="work-panel queue-panel">
+        <div class="section-heading"><h2>Cancellation requests</h2><a href="{% url 'ceremonies' %}">View ceremonies</a></div>
+        {% for item in cancellation_queue %}<a class="queue-item" href="{% url 'ceremony_detail' item.ceremony.public_id %}"><span><strong>{{ item.customer.full_name }}</strong><small>{{ item.ceremony.quote.event_date }} · {{ item.reason|truncatechars:55 }}</small></span><b>Decide</b></a>{% empty %}<p class="empty-state">No cancellation requests are waiting.</p>{% endfor %}
+      </section>
+
+      <section class="work-panel queue-panel">
+        <div class="section-heading"><h2>Quotes to prepare</h2><a href="{% url 'quote_requests' %}?status=new">View all</a></div>
+        {% for item in waiting_quotes %}
+          <a class="queue-item" href="{% url 'manage_quote' item.public_id %}">
+            <span><strong>{{ item.customer_name|default:"Contact pending" }}</strong><small>{{ item.event_date }} · {{ item.location }}</small></span>
+            <b>{% if item.quoted_amount %}Continue{% else %}Prepare{% endif %}</b>
+          </a>
+        {% empty %}<p class="empty-state">No quotes are waiting.</p>{% endfor %}
+      </section>
+
+      <section class="work-panel queue-panel">
+        <div class="section-heading"><h2>Partner capacity attention</h2><a href="{% url 'quote_requests' %}?status=waitlisted">View waiting list</a></div>
+        {% for item in capacity_queue %}<a class="queue-item" href="{% url 'manage_quote' item.public_id %}"><span><strong>{{ item.customer_name|default:"Contact pending" }}</strong><small>{{ item.event_date }} · {{ item.location }} · {{ item.get_status_display }}</small></span><b>Find Partner</b></a>{% empty %}<p class="empty-state">No requests need capacity attention.</p>{% endfor %}
+      </section>
+
+      <section class="work-panel queue-panel">
+        <div class="section-heading"><h2>Coverage at risk</h2><a href="{% url 'ceremonies' %}">View ceremonies</a></div>
+        {% for item in uncovered_queue %}<a class="queue-item" href="{% url 'ceremony_detail' item.public_id %}"><span><strong>{{ item.quote.customer_name }}</strong><small>{{ item.quote.event_date }} · Partner replacement required</small></span><b>Urgent</b></a>{% empty %}<p class="empty-state">No ceremonies have lost partner coverage.</p>{% endfor %}
+      </section>
+
+      <section class="work-panel queue-panel">
+        <div class="section-heading"><h2>Payment attention</h2><a href="{% url 'ceremonies' %}">View all</a></div>
+        {% for item in payment_queue %}
+          <a class="queue-item" href="{% url 'ceremony_detail' item.public_id %}">
+            <span><strong>{{ item.quote.customer_name }}</strong><small>{{ item.quote.event_date }} · {{ item.get_status_display }}</small></span>
+            <b>Review</b>
+          </a>
+        {% empty %}<p class="empty-state">No payment issues need attention.</p>{% endfor %}
+      </section>
+
+      <section class="work-panel queue-panel">
+        <div class="section-heading"><h2>Awaiting partner</h2><a href="{% url 'ceremonies' %}?status=awaiting_partner">View all</a></div>
+        {% for item in assignment_queue %}
+          <a class="queue-item" href="{% url 'ceremony_detail' item.public_id %}">
+            <span><strong>{{ item.quote.customer_name }}</strong><small>{{ item.quote.event_date }} · {{ item.quote.location }}</small></span>
+            <b>Assign</b>
+          </a>
+        {% empty %}<p class="empty-state">No ceremonies are waiting for assignment.</p>{% endfor %}
+      </section>
+
+      <section class="work-panel queue-panel">
+        <div class="section-heading"><h2>Upcoming delivery</h2><a href="{% url 'ceremonies' %}">View all</a></div>
+        {% for item in upcoming_ceremonies %}
+          <a class="queue-item" href="{% url 'ceremony_detail' item.public_id %}">
+            <span><strong>{{ item.quote.customer_name }}</strong><small>{{ item.quote.event_date }} · {{ item.assigned_partner|default:"Unassigned" }}</small></span>
+            <b>{{ item.get_status_display }}</b>
+          </a>
+        {% empty %}<p class="empty-state">No upcoming ceremonies.</p>{% endfor %}
+      </section>
+    </div>
+  </main>
+</div>
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Quote Requests | Akako House{% endblock %}
+
+{% block content %}
+<div class="app-shell">
+  {% include "bookings/_dashboard_sidebar.html" with active_nav="quotes" %}
+
+  <main class="dashboard">
+    <header class="dashboard-header">
+      <div>
+        <p class="eyebrow">Operations</p>
+        <h1>Quote requests</h1>
+        <p class="workspace-subtitle">Review every request and continue the next required action.</p>
+      </div>
+      <a class="button secondary" href="{% url 'home' %}">Open Booking Form</a>
+    </header>
+
+    {% if messages %}
+      <div class="messages workspace-messages">
+        {% for message in messages %}<p>{{ message }}</p>{% endfor %}
+      </div>
+    {% endif %}
+
+    <section class="work-panel">
+      <form class="list-toolbar" method="get">
+        <label>
+          <span class="sr-only">Search quote requests</span>
+          <input type="search" name="q" value="{{ search }}" placeholder="Search customer, email, or location">
+        </label>
+        <label>
+          <span class="sr-only">Filter by status</span>
+          <select name="status">
+            <option value="">All statuses</option>
+            {% for value, label in status_choices %}
+              <option value="{{ value }}"{% if selected_status == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button class="button secondary" type="submit">Filter</button>
+        {% if search or selected_status %}<a class="table-link muted" href="{% url 'quote_requests' %}">Clear</a>{% endif %}
+      </form>
+
+      <div class="table">
+        <div class="table-row quote-list-row table-head">
+          <span>Customer</span><span>Event</span><span>Date</span><span>Location</span><span>Quote</span><span>Ceremony</span><span>Action</span>
+        </div>
+        {% for item in quote_requests %}
+          <div class="table-row quote-list-row">
+            <span><strong>{{ item.customer_name|default:"Contact pending" }}</strong><small>{{ item.email }}</small></span>
+            <span>{{ item.get_event_type_display }}<small>{{ item.guest_count }} guests</small></span>
+            <span>{{ item.event_date }}{% if item.event_time %}<small>{{ item.event_time }}</small>{% endif %}</span>
+            <span>{{ item.location }}</span>
+            <span><mark>{{ item.get_status_display }}</mark></span>
+            <span>{% if item.status == item.Status.ACCEPTED %}{{ item.ceremony.get_status_display|default:"Created" }}{% else %}—{% endif %}</span>
+            <span class="table-actions">
+              {% if item.status == item.Status.ACCEPTED and item.ceremony %}
+                <a class="table-link" href="{% url 'ceremony_detail' item.ceremony.public_id %}">Open Ceremony</a>
+                <a class="table-link muted" href="{% url 'manage_quote' item.public_id %}">View Frozen Quote</a>
+              {% else %}
+                <a class="table-link" href="{% url 'manage_quote' item.public_id %}">{% if item.quoted_amount %}Edit Quote{% else %}Prepare Quote{% endif %}</a>
+              {% endif %}
+              <a class="table-link muted" href="{% url 'quote_review' item.public_id %}" target="_blank">Customer Preview</a>
+            </span>
+          </div>
+        {% empty %}
+          <p class="empty-state">No quote requests match this view.</p>
+        {% endfor %}
+      </div>
+    </section>
+  </main>
+</div>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}My Profile | Akako House{% endblock %}
+{% block content %}
+<main class="portal-auth-page">
+  <section class="portal-auth-card account-overview-card">
+    <a class="portal-brand" href="{% url 'home' %}">Akako House</a>
+    <p class="eyebrow">My profile</p>
+    <h1>Personal details</h1>
+    <div class="account-email-row"><span><strong>Login email</strong><small>{{ request.user.email }}</small></span><a class="table-link" href="{% url 'account_email' %}">Manage Email</a></div>
+    {% if messages %}{% for message in messages %}<p class="notice {{ message.tags }}">{{ message }}</p>{% endfor %}{% endif %}
+    <form method="post" class="portal-form">{% csrf_token %}
+      <div class="form-row"><label>First name{{ form.first_name }}{{ form.first_name.errors }}</label><label>Last name{{ form.last_name }}{{ form.last_name.errors }}</label></div>
+      <button class="button primary" type="submit">Save Profile</button>
+    </form>
+    <a class="button secondary" href="{% url 'account_home' %}">Back to Account</a>
+  </section>
+</main>
+{% endblock %}

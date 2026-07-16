@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Ceremony Workspace | Akako House{% endblock %}
+
+{% block content %}
+<div class="app-shell">
+  {% include "bookings/_dashboard_sidebar.html" with active_nav="ceremonies" %}
+  <main class="dashboard ceremony-workspace">
+    <header class="dashboard-header">
+      <div><p class="eyebrow">Ceremony workspace</p><h1>{{ quote_request.customer_name }}</h1><p class="workspace-subtitle">{{ quote_request.event_date }}{% if quote_request.event_time %} at {{ quote_request.event_time }}{% endif %} · {{ quote_request.location }}</p></div>
+      <a class="button secondary" href="{% url 'manage_quote' quote_request.public_id %}">View Accepted Quote</a>
+    </header>
+    {% if messages %}<div class="messages workspace-messages">{% for message in messages %}<p>{{ message }}</p>{% endfor %}</div>{% endif %}
+
+    {% if ceremony.terminal %}<div class="frozen-record-notice ceremony-freeze"><strong>{{ ceremony.get_status_display }} — record frozen</strong><p>The financial, assignment, and outcome record is preserved and cannot be changed.</p></div>{% endif %}
+
+    <section class="ceremony-stage-banner"><span>Current stage</span><strong>{{ ceremony.get_status_display }}</strong>{% if ceremony.outcome_reason %}<small>{{ ceremony.get_outcome_reason_display }}</small>{% endif %}</section>
+
+    <div class="ceremony-grid">
+      <section class="work-panel ceremony-main">
+        <div class="section-heading"><div><p class="eyebrow">Financial record</p><h2>Payments</h2></div><span>Final due {{ ceremony.final_payment_due_at|default:"Not set" }}</span></div>
+        <div class="payment-card-grid">
+          <article class="payment-card">
+            <div><span>Initial deposit</span><mark>{{ deposit.get_status_display }}</mark></div>
+            <strong>${{ deposit.expected_amount }}</strong><small>Due {{ deposit.due_at|default:"Not set" }}</small>
+            {% if deposit.paid_at %}<p>Paid {{ deposit.paid_at }} · ${{ deposit.received_amount }}</p>{% endif %}
+            {% if not ceremony.terminal and deposit.status != deposit.Status.PAID and deposit.status != deposit.Status.WAIVED %}
+              <form method="post" action="{% url 'record_payment' ceremony.public_id 'deposit' %}" class="compact-payment-form">{% csrf_token %}{{ deposit_form.received_amount }}{{ deposit_form.provider_reference }}{{ deposit_form.notes }}<button class="button primary" type="submit" data-confirm="Confirm that this deposit was actually received? This will update the financial record and ceremony stage.">Record Deposit Paid</button></form>
+            {% endif %}
+            {% if ceremony.status != ceremony.Status.COMPLETED %}
+              {% if ceremony.terminal and deposit.status == deposit.Status.PAID %}
+                <details class="payment-outcomes"><summary>Deposit disposition</summary><div><form method="post" action="{% url 'update_payment_status' ceremony.public_id 'deposit' 'refunded' %}">{% csrf_token %}<input name="notes" placeholder="Refund reference or note"><button class="table-link" type="submit" data-confirm="Confirm that the deposit was refunded? Add the refund reference or note first.">Mark Refunded</button></form><form method="post" action="{% url 'update_payment_status' ceremony.public_id 'deposit' 'forfeited' %}">{% csrf_token %}<input name="notes" placeholder="Forfeit reason"><button class="table-link" type="submit" data-confirm="Confirm that the deposit should be marked forfeited? This decision will remain in the permanent history.">Mark Forfeited</button></form></div></details>
+              {% elif not ceremony.terminal and deposit.status != deposit.Status.WAIVED %}
+                <div class="payment-mini-actions"><form method="post" action="{% url 'update_payment_status' ceremony.public_id 'deposit' 'failed' %}">{% csrf_token %}<button type="submit" data-confirm="Mark this deposit attempt as failed?">Mark Failed</button></form><form method="post" action="{% url 'update_payment_status' ceremony.public_id 'deposit' 'waived' %}">{% csrf_token %}<button type="submit" data-confirm="Waive the deposit requirement? The ceremony will be allowed to continue without a deposit.">Waive Deposit</button></form></div>
+              {% endif %}
+            {% endif %}
+          </article>
+          <article class="payment-card">
+            <div><span>Final payment</span><mark>{{ final_payment.get_status_display }}</mark></div>
+            <strong>${{ final_payment.expected_amount }}</strong><small>Due {{ final_payment.due_at|default:"Not set" }}</small>
+            {% if final_payment.paid_at %}<p>Paid {{ final_payment.paid_at }} · ${{ final_payment.received_amount }}</p>{% endif %}
+            {% if not ceremony.terminal and final_payment.status != final_payment.Status.PAID and final_payment.status != final_payment.Status.WAIVED %}
+              <form method="post" action="{% url 'record_payment' ceremony.public_id 'final' %}" class="compact-payment-form">{% csrf_token %}{{ final_payment_form.received_amount }}{{ final_payment_form.provider_reference }}{{ final_payment_form.notes }}<button class="button primary" type="submit" data-confirm="Confirm that the final payment was actually received? This will update the financial record.">Record Final Paid</button></form>
+            {% endif %}
+            {% if ceremony.status != ceremony.Status.COMPLETED %}
+              {% if ceremony.terminal and final_payment.status == final_payment.Status.PAID %}
+                <details class="payment-outcomes"><summary>Final payment disposition</summary><div><form method="post" action="{% url 'update_payment_status' ceremony.public_id 'final' 'refunded' %}">{% csrf_token %}<input name="notes" placeholder="Refund reference or note"><button class="table-link" type="submit" data-confirm="Confirm that the final payment was refunded? Add the refund reference or note first.">Mark Refunded</button></form></div></details>
+              {% elif not ceremony.terminal and final_payment.status != final_payment.Status.WAIVED %}
+                <div class="payment-mini-actions"><form method="post" action="{% url 'update_payment_status' ceremony.public_id 'final' 'failed' %}">{% csrf_token %}<button type="submit" data-confirm="Mark this final-payment attempt as failed?">Mark Failed</button></form><form method="post" action="{% url 'update_payment_status' ceremony.public_id 'final' 'waived' %}">{% csrf_token %}<button type="submit" data-confirm="Waive the final-payment requirement? This will allow the assigned ceremony to become Ready without collecting the balance.">Waive Final</button></form></div>
+              {% endif %}
+            {% endif %}
+          </article>
+        </div>
+
+        {% if not ceremony.terminal and deposit.status != deposit.Status.PAID and final_payment.status != final_payment.Status.PAID %}
+          <details class="full-payment-panel">
+            <summary>Customer paid the full ceremony total at once</summary>
+            <form method="post" action="{% url 'record_full_payment' ceremony.public_id %}" class="compact-payment-form">
+              {% csrf_token %}
+              <label>Total received{{ full_payment_form.received_amount }}</label>
+              <label>Transaction reference{{ full_payment_form.provider_reference }}</label>
+              <label>Notes{{ full_payment_form.notes }}</label>
+              <button class="button primary" type="submit" data-confirm="Confirm that the complete outstanding amount was received? This will settle both deposit and final-payment obligations.">Record Paid in Full</button>
+            </form>
+            <p class="form-help">This settles both the deposit and final-payment obligations under the same transaction reference.</p>
+          </details>
+        {% endif %}
+
+        <div class="ceremony-section">
+          <div class="section-heading"><div><p class="eyebrow">Fulfillment</p><h2>Partner assignment</h2></div><mark>{{ ceremony.assigned_partner|default:"Unassigned" }}</mark></div>
+          {% if not ceremony.terminal and ceremony.status != ceremony.Status.AWAITING_DEPOSIT %}
+            <form method="post" action="{% url 'assign_partner' ceremony.public_id %}" class="assignment-form">{% csrf_token %}<label>Available on {{ quote_request.event_date }}</label>{{ assignment_form.partner }}<button class="button primary" type="submit" data-confirm="Confirm this partner assignment? The customer and partner will be notified.">{% if ceremony.assigned_partner %}Update Assignment{% else %}Assign Partner{% endif %}</button></form>
+            <p class="form-help">Only active, verified partners without another booking on this date are shown.</p>
+          {% elif ceremony.status == ceremony.Status.AWAITING_DEPOSIT %}<p class="form-help">Record the deposit before assigning a partner.</p>{% endif %}
+          {% if partner_task %}<div class="partner-task-summary"><span>Partner task: <strong>{{ partner_task.get_status_display }}</strong></span></div><form method="post" action="{% url 'manage_partner_payout' ceremony.public_id %}" class="partner-payout-form">{% csrf_token %}<div class="form-row"><label>Partner amount{{ partner_payout_form.amount }}</label><label>Payout status{{ partner_payout_form.status }}</label></div><label>Payment reference{{ partner_payout_form.reference }}</label><label>Internal payout notes{{ partner_payout_form.notes }}</label><button class="button secondary" type="submit" data-confirm="Update this partner payout record? Confirm the amount, status, and reference are correct.">Save Partner Payout</button></form>{% endif %}
+        </div>
+
+        {% if customer_cancellation_requests %}<div class="ceremony-section"><p class="eyebrow">Customer requests</p><h2>Cancellation review</h2>{% for cancellation in customer_cancellation_requests %}<article class="cancellation-review-card"><div><strong>{{ cancellation.get_status_display }}</strong><small>{{ cancellation.created_at }} · {{ cancellation.customer.full_name }}</small><p>{{ cancellation.reason }}</p></div>{% if cancellation.status == cancellation.Status.PENDING %}<form method="post" class="portal-form">{% csrf_token %}<textarea name="staff_notes" rows="2" placeholder="Staff decision note"></textarea><div class="quote-editor-actions"><button class="button secondary" formaction="{% url 'review_customer_cancellation' cancellation.pk 'decline' %}" data-confirm="Decline this customer cancellation request?">Decline</button><button class="button primary" formaction="{% url 'review_customer_cancellation' cancellation.pk 'approve' %}" data-confirm="Approve this cancellation? The ceremony will be cancelled and frozen.">Approve Cancellation</button></div></form>{% elif cancellation.staff_notes %}<p><strong>Staff note:</strong> {{ cancellation.staff_notes }}</p>{% endif %}</article>{% endfor %}</div>{% endif %}
+
+        {% if not ceremony.terminal %}
+          <div class="ceremony-section outcome-section">
+            <p class="eyebrow">Close the job</p><h2>Delivery outcome</h2>
+            {% if ceremony.assigned_partner %}<form method="post" action="{% url 'complete_job' ceremony.public_id %}" class="completion-form">{% csrf_token %}<button class="button completion-button" type="submit" data-confirm="Confirm the ceremony was delivered successfully? The complete record will be frozen afterward.">Mark Completed Successfully</button></form>{% endif %}
+            <details class="exception-outcome"><summary>Record cancellation, failure, or no-show</summary><form method="post" class="outcome-form">{% csrf_token %}{{ outcome_form.outcome_reason.label_tag }}{{ outcome_form.outcome_reason }}{{ outcome_form.outcome_notes.label_tag }}{{ outcome_form.outcome_notes }}<div class="exception-buttons"><button class="button secondary" formaction="{% url 'record_outcome' ceremony.public_id 'cancel' %}" data-confirm="Confirm this ceremony was cancelled? Verify the reason and notes; the operational record will be frozen.">Cancelled</button><button class="button secondary" formaction="{% url 'record_outcome' ceremony.public_id 'fail' %}" data-confirm="Confirm this ceremony failed to complete? Verify the reason and notes; the operational record will be frozen.">Failed</button><button class="button secondary" formaction="{% url 'record_outcome' ceremony.public_id 'no-show' %}" data-confirm="Confirm this was a no-show? Verify the responsible party and notes; the operational record will be frozen.">No-show</button></div></form></details>
+          </div>
+        {% endif %}
+      </section>
+
+      <aside class="work-panel ceremony-side">
+        <p class="eyebrow">Booking facts</p><h2>Customer and event</h2>
+        <dl class="success-summary"><div><dt>Customer</dt><dd>{{ quote_request.customer_name }}</dd></div><div><dt>Email</dt><dd>{{ quote_request.email }}</dd></div><div><dt>Phone</dt><dd>{{ quote_request.phone }}</dd></div><div><dt>Event</dt><dd>{{ quote_request.get_event_type_display }}</dd></div><div><dt>Guests</dt><dd>{{ quote_request.guest_count }}</dd></div><div><dt>Quote</dt><dd>${{ quote_request.quoted_amount }}</dd></div></dl>
+        {% if ceremony.outcome_notes %}<div class="quote-notes"><h2>Outcome notes</h2><p>{{ ceremony.outcome_notes|linebreaksbr }}</p></div>{% endif %}
+        <div class="history-list"><p class="eyebrow">Permanent history</p>{% for event in ceremony.history.all %}<article><strong>{{ event.get_to_status_display|default:event.to_status }}</strong><small>{{ event.created_at }}{% if event.changed_by %} · {{ event.changed_by }}{% endif %}</small>{% if event.note %}<p>{{ event.note }}</p>{% endif %}</article>{% empty %}<p class="form-help">No transitions recorded.</p>{% endfor %}</div>
+      </aside>
+    </div>
+  </main>
+</div>
+{% endblock %}

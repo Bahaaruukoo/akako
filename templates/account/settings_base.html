@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="account-settings-page">
+  <aside class="account-settings-sidebar">
+    <a class="portal-brand" href="{% url 'home' %}">Akako House</a><p class="eyebrow">Account settings</p><strong class="settings-email">{{ request.user.email }}</strong>
+    <nav aria-label="Account settings navigation"><a href="{% url 'account_home' %}">Account Overview</a><a href="{% url 'profile_home' %}">Profile</a><a{% if request.resolver_match.url_name == 'account_email' %} class="active"{% endif %} href="{% url 'account_email' %}">Email Addresses</a>{% if request.user.has_usable_password %}<a{% if request.resolver_match.url_name == 'account_change_password' %} class="active"{% endif %} href="{% url 'account_change_password' %}">Change Password</a>{% else %}<a{% if request.resolver_match.url_name == 'account_set_password' %} class="active"{% endif %} href="{% url 'account_set_password' %}">Set Password</a>{% endif %}<a{% if request.resolver_match.url_name == 'socialaccount_connections' %} class="active"{% endif %} href="{% url 'socialaccount_connections' %}">Connections</a><a href="{% url 'contact' %}">Help &amp; Contact</a></nav>
+  </aside>
+  <main class="work-panel account-settings-main">{% if messages %}{% for message in messages %}<p class="notice {{ message.tags }}">{{ message }}</p>{% endfor %}{% endif %}{% block account_content %}{% endblock %}</main>
+</div>
+{% endblock %}

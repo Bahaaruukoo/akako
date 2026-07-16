@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Notifications | Akako House{% endblock %}
+{% block content %}
+{% if request.user.is_staff or request.user.partner_profile or request.user.customer_profile %}<div class="app-shell">
+  {% if request.user.is_staff %}
+    {% include "bookings/_dashboard_sidebar.html" with active_nav="notifications" %}
+  {% elif request.user.partner_profile %}
+    {% include "bookings/_partner_sidebar.html" with active_nav="notifications" %}
+  {% elif request.user.customer_profile %}
+    {% include "bookings/_customer_sidebar.html" with active_nav="notifications" %}
+  {% endif %}
+{% endif %}
+<main class="notification-page{% if request.user.is_staff or request.user.partner_profile or request.user.customer_profile %} dashboard notification-dashboard{% endif %}">
+  <header class="notification-header">
+    <div><a class="portal-brand" href="{% url 'home' %}">Akako House</a><p class="eyebrow">Account activity</p><h1>Notifications</h1><p class="workspace-subtitle">Important booking, payment, assignment, ceremony, and document updates.</p></div>
+    {% if unread_notification_count %}<form method="post" action="{% url 'notification_mark_all_read' %}">{% csrf_token %}<button class="button secondary" type="submit">Mark All Read</button></form>{% endif %}
+  </header>
+  <section class="notification-list" aria-label="Notifications">
+    {% for notification in notifications %}
+      <article class="notification-card{% if not notification.read_at %} unread{% endif %}">
+        <div class="notification-icon" aria-hidden="true"></div>
+        <div><p class="notification-meta">{{ notification.get_kind_display }} · {{ notification.created_at|timesince }} ago</p><h2>{{ notification.title }}</h2><p>{{ notification.message }}</p>{% if notification.action_url %}<a class="table-link" href="{% url 'notification_open' notification.pk %}">View details</a>{% endif %}</div>
+        {% if not notification.read_at %}<span class="notification-new">New</span>{% endif %}
+      </article>
+    {% empty %}
+      <div class="work-panel empty-state">No notifications yet. Important activity will appear here.</div>
+    {% endfor %}
+  </section>
+</main>
+{% if request.user.is_staff or request.user.partner_profile or request.user.customer_profile %}</div>{% endif %}
+{% endblock %}

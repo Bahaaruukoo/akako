@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}My Availability | Akako House{% endblock %}
+{% block content %}
+<div class="app-shell">
+  {% include "bookings/_partner_sidebar.html" with active_nav="availability" %}
+  <main class="dashboard">
+    <header class="dashboard-header"><div><p class="eyebrow">Scheduling</p><h1>My availability</h1><p class="workspace-subtitle">Add the times you can work or block times you cannot accept ceremonies.</p></div></header>
+    {% if messages %}{% for message in messages %}<p class="notice {{ message.tags }}">{{ message }}</p>{% endfor %}{% endif %}
+    <div class="quote-workspace-grid">
+      <section class="work-panel">
+        <h2>Add calendar entry</h2>
+        <form method="post" class="stacked-form">{% csrf_token %}{{ form.as_p }}<button class="button primary" type="submit">Save Availability</button></form>
+        <p class="form-help">Leave both times blank to mark the whole day. Unavailable entries always block new offers.</p>
+      </section>
+      <section class="work-panel">
+        <h2>Upcoming calendar</h2>
+        <div class="partner-task-list">
+          {% for entry in entries %}
+            <article class="partner-task-card"><span><strong>{{ entry.date }} · {% if entry.start_time %}{{ entry.start_time }}–{{ entry.end_time }}{% else %}Full day{% endif %}</strong><small>{% if entry.available %}Available{% else %}Unavailable{% endif %}{% if entry.notes %} · {{ entry.notes }}{% endif %}</small></span><form method="post" action="{% url 'partner_availability_delete' entry.pk %}">{% csrf_token %}<button class="button text" type="submit" data-confirm="Remove this calendar entry?">Remove</button></form></article>
+          {% empty %}<p class="empty-state">No upcoming availability entries.</p>{% endfor %}
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+{% endblock %}

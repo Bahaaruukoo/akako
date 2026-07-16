@@ -1,0 +1,3 @@
+{% extends "base.html" %}
+{% block title %}Sign Out | Akako House{% endblock %}
+{% block content %}<main class="portal-auth-page"><section class="portal-auth-card login-card"><a class="portal-brand" href="{% url 'home' %}">Akako House</a><p class="eyebrow">Account security</p><h1>Sign out?</h1><p class="workspace-subtitle">You will need to sign in again to reach your account workspace.</p><form method="post" action="{% url 'account_logout' %}" class="portal-form">{% csrf_token %}{{ redirect_field }}<button class="button primary" type="submit">Sign Out</button><a class="button secondary" href="{% url 'account_home' %}">Keep Me Signed In</a></form></section></main>{% endblock %}

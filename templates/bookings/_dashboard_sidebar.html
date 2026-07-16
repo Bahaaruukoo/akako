@@ -1,0 +1,13 @@
+<aside class="sidebar">
+  <a class="brand" href="{% url 'home' %}">Akako House</a>
+  <nav class="side-nav" aria-label="Dashboard navigation">
+    <a{% if active_nav == 'overview' %} class="active"{% endif %} href="{% url 'operations_dashboard' %}">Overview</a>
+    <a{% if active_nav == 'insights' %} class="active"{% endif %} href="{% url 'business_insights' %}">Business Insights</a>
+    <a{% if active_nav == 'notifications' %} class="active"{% endif %} href="{% url 'notification_center' %}"><span>Notifications</span>{% if unread_notification_count %}<span class="nav-alert-badge">{{ unread_notification_count }}</span>{% endif %}</a>
+    <a{% if active_nav == 'content' %} class="active"{% endif %} href="{% url 'content_library' %}"><span>Content &amp; Reviews</span>{% if pending_content_count %}<span class="nav-alert-badge">{{ pending_content_count }}</span>{% endif %}</a>
+    {% if perms.bookings.view_quoterequest %}<a{% if active_nav == 'quotes' %} class="active"{% endif %} href="{% url 'quote_requests' %}">Quote Requests</a>{% endif %}
+    {% if perms.bookings.view_ceremony %}<a{% if active_nav == 'ceremonies' %} class="active"{% endif %} href="{% url 'ceremonies' %}">Ceremonies</a>{% endif %}
+    {% if perms.bookings.view_partner %}<a{% if active_nav == 'partners' %} class="active"{% endif %} href="{% url 'partners' %}"><span>Partners</span>{% if pending_partner_document_count %}<span class="nav-alert-badge" aria-label="{{ pending_partner_document_count }} new partner document{{ pending_partner_document_count|pluralize }} pending review">{{ pending_partner_document_count }}</span>{% endif %}</a>{% endif %}
+    <a class="side-nav-system" href="/admin/">System Admin</a>
+  </nav>
+</aside>

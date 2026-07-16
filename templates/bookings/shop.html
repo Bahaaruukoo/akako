@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Freshly Roasted Ethiopian Coffee | Akako House{% endblock %}
+{% block content %}
+<main class="shop-coming-soon-page">
+  <header class="shop-header">
+    <a class="portal-brand" href="{% url 'home' %}">Akako House</a>
+    <a class="shop-back-link" href="{% url 'home' %}">Ceremony experiences</a>
+  </header>
+
+  <section class="shop-hero">
+    <div class="shop-story">
+      <p class="shop-launch-label">Launching Soon</p>
+      <h1>Freshly Roasted<br>Ethiopian Coffee</h1>
+      <p class="shop-lead">We're preparing our roasted coffee collection. Join our mailing list to be the first to know when ordering opens.</p>
+      <div class="shop-coming-list" aria-label="What is coming">
+        <span>Ethiopian Single-Origin Coffee</span>
+        <span>Freshly roasted after ordering</span>
+        <span>Whole bean or ground</span>
+        <span>Subscription options <small>Coming Soon</small></span>
+      </div>
+    </div>
+
+    <aside class="shop-signup-card" aria-labelledby="shop-signup-heading">
+      <p class="eyebrow">First to know</p>
+      <h2 id="shop-signup-heading">Join the coffee list</h2>
+      <p>We'll send you the launch announcement when the first collection is ready.</p>
+      {% if messages %}{% for message in messages %}<p class="notice {{ message.tags }}">{{ message }}</p>{% endfor %}{% endif %}
+      <form method="post" class="portal-form shop-interest-form">
+        {% csrf_token %}
+        {{ form.website }}
+        {{ form.non_field_errors }}
+        <label>{{ form.email.label }}{{ form.email }}{{ form.email.errors }}</label>
+        <label>{{ form.postal_code.label }}{{ form.postal_code }}{{ form.postal_code.errors }}</label>
+        <label>{{ form.purchase_frequency.label }}{{ form.purchase_frequency }}{{ form.purchase_frequency.errors }}</label>
+        <button class="button primary" type="submit">Notify Me</button>
+        <small class="shop-consent">By selecting “Notify Me,” you agree to receive Akako House coffee-launch updates. You can unsubscribe at any time.</small>
+      </form>
+    </aside>
+  </section>
+
+  <section class="shop-origin-note">
+    <p class="eyebrow">From the birthplace of coffee</p>
+    <h2>A collection rooted in origin.</h2>
+    <p>Our planned collection will celebrate the character, history, and hospitality carried in Ethiopian coffee—prepared with care for everyday cups and meaningful gatherings.</p>
+  </section>
+</main>
+{% endblock %}

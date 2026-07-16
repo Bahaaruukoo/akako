@@ -1,0 +1,12 @@
+<aside class="sidebar partner-sidebar">
+  <a class="brand" href="{% url 'partner_dashboard' %}">Akako House Partner</a>
+  <nav class="side-nav" aria-label="Partner workspace navigation">
+    <a{% if active_nav == 'workspace' %} class="active"{% endif %} href="{% url 'partner_dashboard' %}">Workspace</a>
+    <a href="{% url 'notification_center' %}"><span>Notifications</span>{% if unread_notification_count %}<span class="nav-alert-badge">{{ unread_notification_count }}</span>{% endif %}</a>
+    <a{% if active_nav == 'availability' %} class="active"{% endif %} href="{% url 'partner_availability' %}">My Availability</a>
+    <a{% if active_nav == 'profile' %} class="active"{% endif %} href="{% url 'partner_profile' %}">My Profile</a>
+    <a{% if active_nav == 'gallery' %} class="active"{% endif %} href="{% url 'partner_gallery' %}">Photo Gallery</a>
+    <a{% if active_nav == 'documents' %} class="active"{% endif %} href="{% url 'partner_documents' %}">Supporting Documents</a>
+    <form method="post" action="{% url 'partner_logout' %}">{% csrf_token %}<button class="side-nav-button" type="submit">Sign Out</button></form>
+  </nav>
+</aside>

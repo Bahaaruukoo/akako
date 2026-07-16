@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Partners | Akako House{% endblock %}
+
+{% block content %}
+<div class="app-shell">
+  {% include "bookings/_dashboard_sidebar.html" with active_nav="partners" %}
+
+  <main class="dashboard">
+    <header class="dashboard-header">
+      <div>
+        <p class="eyebrow">Partner network</p>
+        <h1>Cultural Ambassadors</h1>
+        <p class="workspace-subtitle">Manage coverage, contacts, and readiness checks.</p>
+      </div>
+      <a class="button primary" href="{% url 'add_partner' %}">Add Partner</a>
+    </header>
+
+    {% if messages %}
+      <div class="messages workspace-messages">
+        {% for message in messages %}<p>{{ message }}</p>{% endfor %}
+      </div>
+    {% endif %}
+
+    <section class="work-panel">
+      <form class="list-toolbar" method="get">
+        <label>
+          <span class="sr-only">Search partners</span>
+          <input type="search" name="q" value="{{ search }}" placeholder="Search name, contact, or service area">
+        </label>
+        <button class="button secondary" type="submit">Search</button>
+        {% if search %}<a class="table-link muted" href="{% url 'partners' %}">Clear</a>{% endif %}
+      </form>
+
+      <div class="table">
+        <div class="table-row partner-list-row table-head">
+          <span>Partner</span><span>Type</span><span>Contact</span><span>Service Area</span><span>Readiness</span><span>Status</span><span>Action</span>
+        </div>
+        {% for item in partners %}
+          <div class="table-row partner-list-row">
+            <span><strong>{{ item.name }}</strong></span>
+            <span>{{ item.get_partner_type_display }}</span>
+            <span>{{ item.contact_name }}<small>{{ item.email }}</small><small>{{ item.phone }}</small></span>
+            <span>{{ item.service_area }}</span>
+            <span class="readiness-list">
+              <small class="{% if item.food_permit_verified %}verified{% else %}attention{% endif %}">Permit</small>
+              <small class="{% if item.insurance_verified %}verified{% else %}attention{% endif %}">Insurance</small>
+              <small class="{% if item.cultural_training_verified %}verified{% else %}attention{% endif %}">Training</small>
+            </span>
+            <span><mark>{% if item.active %}Active{% else %}Inactive{% endif %}</mark></span>
+            <span><a class="table-link" href="{% url 'manage_partner' item.pk %}">Edit Partner</a></span>
+          </div>
+        {% empty %}
+          <p class="empty-state">No partners found. Add the first partner to begin building the network.</p>
+        {% endfor %}
+      </div>
+    </section>
+  </main>
+</div>
+{% endblock %}

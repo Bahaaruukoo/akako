@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Akako House | Ethiopian Coffee Ceremony Experiences{% endblock %}
+
+{% block content %}
+<main class="bunago-page">
+  <header class="bunago-header">
+    <a class="bunago-brand akako-wordmark" href="{% url 'home' %}" aria-label="Akako House home">
+      <span class="akako-logo-mark" aria-hidden="true"><img src="{% static 'images/bunago-logo-extracted.png' %}" alt=""></span>
+      <span class="akako-wordmark-text"><span>Akako</span> <small>House</small></span>
+    </a>
+    <nav class="bunago-nav" aria-label="Main navigation">
+      <a href="#process">How It Works</a>
+      <a href="#services">Services</a>
+      <a href="#partners">Partners</a>
+      <a href="{% url 'shop' %}">Shop</a>
+      {% if request.user.is_staff %}
+        <a href="{% url 'operations_dashboard' %}">Staff Dashboard</a>
+      {% elif request.user.partner_profile %}
+        <a href="{% url 'partner_dashboard' %}">My Workspace</a>
+      {% elif request.user.customer_profile %}
+        <a href="{% url 'customer_dashboard' %}">My Ceremonies</a>
+      {% endif %}
+    </nav>
+    <div class="header-access-actions">
+      <a class="nav-quote-button" href="#request">Check Availability</a>
+      {% if request.user.is_authenticated %}
+        <details class="account-dropdown">
+          <summary><span>{{ request.user.email }}</span><i aria-hidden="true"></i></summary>
+          <nav class="account-dropdown-panel" aria-label="Account menu">
+            <a href="{% url 'account_home' %}">Account</a>
+            <a href="{% url 'profile_home' %}">Profile</a>
+            <a href="{% url 'notification_center' %}">Notifications{% if unread_notification_count %} ({{ unread_notification_count }}){% endif %}</a>
+            {% if request.user.is_staff %}
+              <a href="{% url 'operations_dashboard' %}">Operations Workspace</a>
+            {% elif request.user.partner_profile %}
+              <a href="{% url 'partner_dashboard' %}">Partner Workspace</a>
+            {% elif request.user.customer_profile %}
+              <a href="{% url 'customer_dashboard' %}">My Ceremonies</a>
+            {% endif %}
+            <a href="{% url 'account_email' %}">Manage Login Email</a>
+            <a href="{% url 'contact' %}">Help &amp; Contact</a>
+            <form method="post" action="{% url 'partner_logout' %}">{% csrf_token %}<button type="submit">Logout</button></form>
+          </nav>
+        </details>
+      {% else %}
+        <a class="nav-account-button" href="{% url 'partner_login' %}">Login</a>
+      {% endif %}
+    </div>
+  </header>
+
+  <section class="bunago-hero">
+    <div class="hero-left">
+      <p class="hero-kicker">Ethiopian hospitality, brought to your gathering</p>
+      <h1><span>Where Coffee Becomes</span><span>Conversation</span></h1>
+      <p>Share an unforgettable Ethiopian tradition with your guests. Our Cultural Ambassadors bring an authentic coffee ceremony directly to weddings, workplaces, universities, and private celebrations.</p>
+      <div class="hero-actions">
+        <div><a class="button primary" href="#request"><span class="calendar-icon" aria-hidden="true"></span>Plan Your Ceremony</a></div>
+        <div><a class="button partner-button" href="#services">Discover the Experience</a></div>
+      </div>
+      {% if not request.user.is_authenticated %}<p class="customer-account-prompt">Returning customer? <a href="{% url 'customer_registration' %}">Create an account</a> to track quotes, payments, and ceremonies.</p>{% endif %}
+    </div>
+
+    <div class="hero-photo" aria-hidden="true">
+      <img src="{% static 'images/ceremony-background-kolo.png' %}" alt="">
+    </div>
+
+    <aside class="bunago-quote-card" id="request" aria-labelledby="quote-title">
+      <div class="quote-title-row">
+        <span class="quote-calendar-icon" aria-hidden="true"></span>
+        <h2 id="quote-title">Plan Your Ceremony</h2>
+      </div>
+
+      {% if messages %}
+        <div class="messages">
+          {% for message in messages %}
+            <p>{{ message }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <form method="post" class="bunago-form">
+        {% csrf_token %}
+        <label>
+          <span>Event Date</span>
+          {{ form.event_date }}
+          {% if form.event_date.errors %}<strong>{{ form.event_date.errors|striptags }}</strong>{% endif %}
+        </label>
+        <label>
+          <span>City or ZIP</span>
+          {{ form.location }}
+          {% if form.location.errors %}<strong>{{ form.location.errors|striptags }}</strong>{% endif %}
+        </label>
+        <label>
+          <span>Guest Count</span>
+          {{ form.guest_count }}
+          {% if form.guest_count.errors %}<strong>{{ form.guest_count.errors|striptags }}</strong>{% endif %}
+        </label>
+        <label>
+          <span>Event Type</span>
+          {{ form.event_type }}
+          {% if form.event_type.errors %}<strong>{{ form.event_type.errors|striptags }}</strong>{% endif %}
+        </label>
+        <label>
+          <span>Milk Option</span>
+          {{ form.milk_preference }}
+          {% if form.milk_preference.errors %}<strong>{{ form.milk_preference.errors|striptags }}</strong>{% endif %}
+        </label>
+        <label>
+          <span>Snack Style</span>
+          {{ form.snack_style }}
+          {% if form.snack_style.errors %}<strong>{{ form.snack_style.errors|striptags }}</strong>{% endif %}
+        </label>
+        <button class="button primary full" type="submit">Request My Custom Quote</button>
+        <p class="response-note"><span aria-hidden="true">♢</span>Most requests receive a response within 1 business day.</p>
+      </form>
+    </aside>
+  </section>
+
+  <section class="bunago-process" id="process" aria-label="How it works">
+    <ol>
+      <li>
+        <span class="process-icon process-calendar" aria-hidden="true"></span>
+        <div><strong><b>1</b> Check Availability</strong><p>Tell us where and when you are gathering.</p></div>
+      </li>
+      <li>
+        <span class="process-icon process-mail" aria-hidden="true"></span>
+        <div><strong><b>2</b> Customize</strong><p>We shape the ceremony around your guests and occasion.</p></div>
+      </li>
+      <li>
+        <span class="process-icon process-people" aria-hidden="true"></span>
+        <div><strong><b>3</b> Meet Your Ambassador</strong><p>A trusted Cultural Ambassador is confirmed for your gathering.</p></div>
+      </li>
+      <li>
+        <span class="process-icon process-ceremony" aria-hidden="true"></span>
+        <div><strong><b>4</b> Experience the Tradition</strong><p>Slow down, share stories, and welcome Ethiopian hospitality.</p></div>
+      </li>
+    </ol>
+  </section>
+
+  {% if client_organizations %}<section class="trusted-section" aria-label="Trusted organizations"><p class="eyebrow">Trusted by</p><div class="client-logo-row">{% for client in client_organizations %}{% if client.website %}<a href="{{ client.website }}" target="_blank" rel="noopener">{% endif %}<img src="{{ client.logo.url }}" alt="{{ client.alt_text|default:client.name }}">{% if client.website %}</a>{% endif %}{% endfor %}</div></section>{% endif %}
+
+  <section class="services-section" id="services">
+    <div class="section-copy">
+      <p class="eyebrow">Services</p>
+      <h2>Experience Ethiopian hospitality through a tradition made for gathering.</h2>
+      <p>We bring the complete ceremony to homes, offices, weddings, graduations, and cultural gatherings—creating space for conversation, connection, and generous hospitality.</p>
+    </div>
+    <div class="service-grid">
+      <article>
+        <span>Coffee</span>
+        <h3>Fresh ceremony coffee</h3>
+        <p>Traditional coffee service prepared and served by a trained Cultural Ambassador.</p>
+      </article>
+      <article>
+        <span>Kolo + Popcorn</span>
+        <h3>Cultural accompaniments</h3>
+        <p>Popcorn and Ethiopian kolo are presented with a clean, guest-friendly serving style.</p>
+      </article>
+      <article>
+        <span>Milk Options</span>
+        <h3>Dairy or non-dairy</h3>
+        <p>Milk preferences are collected with the request so the ambassador can prepare properly.</p>
+      </article>
+    </div>
+  </section>
+
+  {% if event_photos %}<section class="experience-gallery-section"><div class="section-copy"><p class="eyebrow">The experience</p><h2>Tradition you can see, aroma you can remember.</h2></div><div class="experience-photo-grid">{% for photo in event_photos %}<figure><img src="{{ photo.image.url }}" alt="{{ photo.alt_text }}" loading="lazy">{% if photo.caption %}<figcaption>{{ photo.caption }}</figcaption>{% endif %}</figure>{% endfor %}</div></section>{% endif %}
+
+  {% if testimonials or customer_reviews %}<section class="social-proof-section"><div class="section-copy"><p class="eyebrow">Shared experiences</p><h2>Gatherings remembered long after the final cup.</h2>{% if review_total %}<p class="review-summary"><span>★★★★★</span> {{ review_average|floatformat:1 }} from {{ review_total }} verified review{{ review_total|pluralize }}</p>{% endif %}</div><div class="testimonial-grid">{% for item in customer_reviews %}<blockquote><span class="review-stars">{% for star in "12345" %}{% if forloop.counter <= item.rating %}★{% else %}☆{% endif %}{% endfor %}</span>{% if item.title %}<strong>{{ item.title }}</strong>{% endif %}<p>“{{ item.review }}”</p><footer>— {{ item.customer.first_name }} · Verified ceremony</footer></blockquote>{% endfor %}{% for item in testimonials %}<blockquote><span class="review-stars">{% for star in "12345" %}{% if forloop.counter <= item.rating %}★{% else %}☆{% endif %}{% endfor %}</span><p>“{{ item.quote }}”</p><footer>— {{ item.attribution }}{% if item.event_context %} · {{ item.event_context }}{% endif %}</footer></blockquote>{% endfor %}</div></section>{% endif %}
+
+  {% if partner_gallery_photos %}<section class="ambassador-gallery-section"><div class="section-copy"><p class="eyebrow">Our Cultural Ambassadors</p><h2>Hospitality carried forward by trusted hands.</h2></div><div class="experience-photo-grid ambassador-photo-grid">{% for photo in partner_gallery_photos %}<figure><img src="{{ photo.image.url }}" alt="{{ photo.alt_text }}" loading="lazy"><figcaption><strong>{{ photo.partner.name }}</strong>{% if photo.caption %}<span>{{ photo.caption }}</span>{% endif %}</figcaption></figure>{% endfor %}</div></section>{% endif %}
+
+  <section class="partners-section" id="partners">
+    <div class="partner-panel">
+      <div>
+        <p class="eyebrow">Partners</p>
+        <h2>Trusted local restaurant partners fulfill ceremonies under Akako House standards.</h2>
+      </div>
+      <ul>
+        <li>Food-service experience</li>
+        <li>Permit and insurance review</li>
+        <li>Cultural Ambassador standards</li>
+        <li>Centralized booking and support</li>
+      </ul>
+      <div class="partner-join-actions">
+        <a class="button primary" href="{% url 'partner_registration' %}">Become a Partner</a>
+        <!-- <a class="button secondary" href="{% url 'partner_login' %}">Partner Sign In</a> -->
+      </div>
+    </div>
+  </section>
+
+  <section class="faq-section" id="faq">
+    <p class="eyebrow">FAQ</p>
+    <h2>Common booking questions</h2>
+    <div class="faq-grid">
+      <details open>
+        <summary>Is the quote instant?</summary>
+        <p>No. We review your event size, location, and ceremony needs, then send a custom quote.</p>
+      </details>
+      <details>
+        <summary>Do you travel to my location?</summary>
+        <p>Yes. Akako House is designed for ceremonies at homes, offices, venues, and community events.</p>
+      </details>
+      <details>
+        <summary>Who performs the ceremony?</summary>
+        <p>A trained Cultural Ambassador from our trusted local partner network.</p>
+      </details>
+    </div>
+  </section>
+  <section class="homepage-final-invitation"><p class="eyebrow">Your gathering</p><h2>Bring the ceremony to your table.</h2><p>Tell us about the occasion and we will help you plan an experience rooted in hospitality, conversation, and tradition.</p><a class="button primary" href="#request">Check Availability</a></section>
+</main>
+{% endblock %}

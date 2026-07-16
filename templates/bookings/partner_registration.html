@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Become a Partner | Akako House{% endblock %}
+{% block content %}
+<main class="portal-auth-page">
+  <section class="portal-auth-card registration-card">
+    <a class="portal-brand" href="{% url 'home' %}">Akako House</a>
+    <p class="eyebrow">Partner network</p>
+    <h1>Create your partner account</h1>
+    <p class="workspace-subtitle">Tell us about your service, create your private workspace, and upload available supporting documents. Your application will be reviewed before assignments are enabled.</p>
+    {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+    <form method="post" enctype="multipart/form-data" class="portal-form">
+      {% csrf_token %}
+      <fieldset><legend>Account</legend><label>Email{{ form.email }}{{ form.email.errors }}</label><div class="form-row"><label>Password{{ form.password1 }}{{ form.password1.errors }}</label><label>Confirm password{{ form.password2 }}{{ form.password2.errors }}</label></div></fieldset>
+      <fieldset><legend>Partner profile</legend><div class="form-row"><label>Business or public name{{ form.name }}{{ form.name.errors }}</label><label>Partner type{{ form.partner_type }}{{ form.partner_type.errors }}</label></div><div class="form-row"><label>Primary contact{{ form.contact_name }}{{ form.contact_name.errors }}</label><label>Phone{{ form.phone }}{{ form.phone.errors }}</label></div><label>Service area{{ form.service_area }}{{ form.service_area.help_text }}{{ form.service_area.errors }}</label><label>Business address{{ form.address }}{{ form.address.errors }}</label><label>About your experience{{ form.bio }}{{ form.bio.errors }}</label></fieldset>
+      <fieldset><legend>Payout preference</legend><div class="form-row"><label>Preferred method{{ form.payout_method }}{{ form.payout_method.errors }}</label><label>Payout destination{{ form.payout_destination }}<small>{{ form.payout_destination.help_text }}</small>{{ form.payout_destination.errors }}</label></div></fieldset>
+      <fieldset><legend>Supporting documents <small>(PDF, JPG, or PNG; 10 MB each)</small></legend><div class="document-upload-grid"><label>Food-service permit{{ form.food_permit }}{{ form.food_permit.errors }}</label><label>Insurance certificate{{ form.insurance_certificate }}{{ form.insurance_certificate.errors }}</label><label>Identity document{{ form.identity_document }}{{ form.identity_document.errors }}</label><label>Training certificate{{ form.training_certificate }}{{ form.training_certificate.errors }}</label></div></fieldset>
+      <button class="button primary" type="submit" data-confirm="Submit this partner application for review? You can add more documents from your workspace afterward.">Create Account &amp; Submit</button>
+    </form>
+    <p class="portal-auth-footer">Already registered? <a href="{% url 'partner_login' %}">Sign in to your workspace</a></p>
+  </section>
+</main>
+{% endblock %}

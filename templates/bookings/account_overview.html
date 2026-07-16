@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}My Account | Akako House{% endblock %}
+{% block content %}
+<main class="portal-auth-page">
+  <section class="portal-auth-card account-overview-card">
+    <a class="portal-brand" href="{% url 'home' %}">Akako House</a>
+    <p class="eyebrow">My account</p>
+    <h1>{{ request.user.email }}</h1>
+    <p class="workspace-subtitle">Manage your profile, login email, and Akako House workspace.</p>
+    <div class="account-overview-links">
+      {% if request.user.is_staff %}
+        <a class="button primary" href="{% url 'operations_dashboard' %}">Open Operations Workspace</a>
+        <a class="button secondary" href="{% url 'profile_home' %}">Profile</a>
+      {% elif request.user.partner_profile %}
+        <a class="button primary" href="{% url 'partner_dashboard' %}">Open Partner Workspace</a>
+        <a class="button secondary" href="{% url 'partner_profile' %}">Edit Profile</a>
+      {% elif request.user.customer_profile %}
+        <a class="button primary" href="{% url 'customer_dashboard' %}">Open My Ceremonies</a>
+        <a class="button secondary" href="{% url 'customer_profile' %}">Edit Profile &amp; Addresses</a>
+      {% else %}
+        <p class="notice">Complete a customer or partner registration to create a service profile.</p>
+      {% endif %}
+      <a class="button secondary" href="{% url 'account_email' %}">Manage Login Email</a>
+      <a class="button secondary" href="{% url 'contact' %}">Help &amp; Contact</a>
+    </div>
+  </section>
+</main>
+{% endblock %}

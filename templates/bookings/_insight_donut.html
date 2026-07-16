@@ -1,0 +1,15 @@
+<div class="donut-layout">
+  <div class="donut-chart" style="background: {{ chart.gradient|safe }}" role="img" aria-label="{{ title }} percentages">
+    <div><strong>{{ chart.center_value }}</strong><span>Total</span></div>
+  </div>
+  <div class="chart-legend">
+    {% for item in chart.items %}
+      <div>
+        <i style="background: {{ item.color }}"></i>
+        <span>{{ item.label }}</span>
+        <strong>{{ item.percentage|floatformat:1 }}%</strong>
+        <small>{{ item.display_value }}</small>
+      </div>
+    {% endfor %}
+  </div>
+</div>

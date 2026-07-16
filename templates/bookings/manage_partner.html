@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}{% if partner %}Edit Partner{% else %}Add Partner{% endif %} | Akako House{% endblock %}
+
+{% block content %}
+<div class="app-shell">
+  {% include "bookings/_dashboard_sidebar.html" with active_nav="partners" %}
+
+  <main class="dashboard quote-workspace">
+    <header class="dashboard-header">
+      <div>
+        <p class="eyebrow">Partner network</p>
+        <h1>{% if partner %}Edit {{ partner.name }}{% else %}Add a partner{% endif %}</h1>
+        <p class="workspace-subtitle">Record contact, service coverage, and verification status.</p>
+      </div>
+      <a class="button secondary" href="{% url 'partners' %}">Back to Partners</a>
+    </header>
+
+    <section class="work-panel quote-editor partner-editor">
+      <form method="post" class="quote-management-form">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+        <div class="form-row">
+          <label>Partner name{{ form.name }}{{ form.name.errors }}</label>
+          <label>Partner type{{ form.partner_type }}{{ form.partner_type.errors }}</label>
+        </div>
+        <div class="form-row">
+          <label>Contact name{{ form.contact_name }}{{ form.contact_name.errors }}</label>
+          <label>Email{{ form.email }}{{ form.email.errors }}</label>
+        </div>
+        <div class="form-row">
+          <label>Phone{{ form.phone }}{{ form.phone.errors }}</label>
+          <label>Service area{{ form.service_area }}{{ form.service_area.errors }}</label>
+        </div>
+        <label>Address{{ form.address }}{{ form.address.errors }}</label>
+        <label>Partner biography{{ form.bio }}{{ form.bio.errors }}</label>
+        <div class="form-row">
+          <label>Application status{{ form.application_status }}{{ form.application_status.errors }}</label>
+          <label>Payout method{{ form.payout_method }}{{ form.payout_method.errors }}</label>
+        </div>
+        <label>Payout destination{{ form.payout_destination }}<small>{{ form.payout_destination.help_text }}</small>{{ form.payout_destination.errors }}</label>
+        <fieldset class="verification-fieldset">
+          <legend>Readiness and status</legend>
+          <label>{{ form.food_permit_verified }} Food permit verified</label>
+          <label>{{ form.insurance_verified }} Insurance verified</label>
+          <label>{{ form.cultural_training_verified }} Cultural training verified</label>
+          <label class="partner-active-control">{{ form.active }} Active and available for assignments{{ form.active.errors }}</label>
+        </fieldset>
+        <label>Internal notes{{ form.notes }}{{ form.notes.errors }}</label>
+        <div class="quote-editor-actions">
+          <button class="button primary" type="submit" data-confirm="Save these partner changes? Confirm the active and readiness settings are correct.">Save Partner</button>
+          <a class="button secondary" href="{% url 'partners' %}">Cancel</a>
+        </div>
+      </form>
+      {% if partner %}<div class="staff-document-review"><div class="section-heading"><h2>Submitted documents</h2><span>Private files · staff-only expiry dates</span></div><div class="document-list">{% for document in documents %}<article><span><strong>{{ document.get_document_type_display }}</strong><small>{{ document.uploaded_at }}</small>{% if document.expiry_date %}<small>Expires: {{ document.expiry_date }}</small>{% endif %}{% if document.review_notes %}<small>{{ document.review_notes }}</small>{% endif %}</span><mark>{{ document.get_review_status_display }}</mark><a class="table-link" href="{% url 'partner_document_download' document.pk %}">Download</a><form method="post" class="document-review-form">{% csrf_token %}<label>Expiry date (staff only)<input type="date" name="expiry_date" value="{{ document.expiry_date|date:'Y-m-d' }}"></label><input name="review_notes" value="{{ document.review_notes }}" placeholder="Review note"><button class="table-link" formaction="{% url 'review_partner_document' document.pk 'approve' %}" data-confirm="Approve this supporting document and save its expiry date? The matching verification flag will be updated.">Approve</button><button class="table-link danger-link" formaction="{% url 'review_partner_document' document.pk 'reject' %}" data-confirm="Reject this supporting document? Add a review note explaining what is needed.">Reject</button></form></article>{% empty %}<p class="empty-state">No supporting documents uploaded.</p>{% endfor %}</div></div>{% endif %}
+    </section>
+  </main>
+</div>
+{% endblock %}
