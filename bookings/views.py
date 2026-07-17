@@ -76,6 +76,7 @@ from .notifications import (
     notify_payment_received,
     notify_quote_accepted,
     notify_quote_expired,
+    notify_quote_submitted,
     notify_staff,
 )
 from .services import (
@@ -251,7 +252,9 @@ def partner_registration(request):
         form = PartnerRegistrationForm(request.POST, request.FILES)
         if form.is_valid():
             with transaction.atomic():
-                user = form.save(request)
+                user, signup_response = form.try_save(request)
+                if signup_response:
+                    return signup_response
                 partner = Partner.objects.create(
                     user=user,
                     name=form.cleaned_data["name"],
@@ -305,7 +308,9 @@ def customer_registration(request):
         form = CustomerRegistrationForm(request.POST)
         if form.is_valid():
             with transaction.atomic():
-                user = form.save(request)
+                user, signup_response = form.try_save(request)
+                if signup_response:
+                    return signup_response
                 customer = CustomerProfile.objects.create(
                     user=user,
                     first_name=form.cleaned_data["first_name"],
@@ -776,17 +781,7 @@ def quote_contact(request, public_id):
             if customer:
                 quote_request.customer = customer
             quote_request.save()
-            notify_staff(
-                kind=Notification.Kind.QUOTE_NEW,
-                title="New quote request",
-                message=(
-                    f"{quote_request.customer_name} requested a {quote_request.get_event_type_display()} "
-                    f"for {quote_request.event_date} in {quote_request.location}."
-                ),
-                event_key=f"quote:{quote_request.pk}:submitted",
-                action_url=reverse("manage_quote", args=[quote_request.public_id]),
-                send_email=True,
-            )
+            notify_quote_submitted(quote_request)
             messages.success(
                 request,
                 "Your ceremony request was received. We will review the details and send a custom quote.",

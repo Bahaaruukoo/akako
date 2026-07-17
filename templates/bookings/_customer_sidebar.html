@@ -1,5 +1,5 @@
 <aside class="sidebar customer-sidebar">
-  <a class="brand" href="{% url 'customer_dashboard' %}">Akako House Customer</a>
+  <a class="brand" href="{% url 'customer_dashboard' %}">Akako House</a>
   <nav class="side-nav" aria-label="Customer workspace navigation">
     <a{% if active_nav == 'workspace' %} class="active"{% endif %} href="{% url 'customer_dashboard' %}">My Ceremonies</a>
     <a href="{% url 'notification_center' %}"><span>Notifications</span>{% if unread_notification_count %}<span class="nav-alert-badge">{{ unread_notification_count }}</span>{% endif %}</a>

@@ -1,1 +1,16 @@
-{% extends "base.html" %}{% block title %}Verify Your Email | Akako House{% endblock %}{% block content %}<main class="portal-auth-page"><section class="portal-auth-card login-card"><a class="portal-brand" href="{% url 'home' %}">Akako House</a><p class="eyebrow">One more step</p><h1>Check your email</h1><p>We sent a verification link to your email address. Open that link before signing in to your partner workspace.</p><a class="button secondary" href="{% url 'partner_login' %}">Return to Login</a></section></main>{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}Verify Your Email | Akako House{% endblock %}
+
+{% block content %}
+<main class="portal-auth-page">
+  <section class="portal-auth-card login-card">
+    <a class="portal-brand" href="{% url 'home' %}">Akako House</a>
+    <p class="eyebrow">One more step</p>
+    <h1>Check your email</h1>
+    <p>We sent a verification link to your email address. Open the link before signing in to your Akako House account.</p>
+    <p class="email-delivery-note"><strong>Not in your inbox?</strong> Please check your spam or junk folder. The message will be from Akako House.</p>
+    <a class="button secondary" href="{% url 'partner_login' %}">Return to Login</a>
+  </section>
+</main>
+{% endblock %}

@@ -419,6 +419,35 @@ class BookingFlowTests(TestCase):
         guest_quote.refresh_from_db()
         self.assertEqual(guest_quote.customer, customer)
 
+    def test_customer_registration_with_existing_email_does_not_crash(self):
+        self.client.logout()
+        existing = get_user_model().objects.create_user(
+            email="existing-customer@example.com",
+            password="existing-password-123",
+        )
+
+        response = self.client.post(
+            reverse("customer_registration"),
+            {
+                "email": existing.email,
+                "password1": "different-password-123",
+                "password2": "different-password-123",
+                "first_name": "Existing",
+                "last_name": "Customer",
+                "phone": "555-0134",
+                "address": "10 Main Street",
+                "city": "Leesburg",
+                "state": "VA",
+                "postal_code": "20175",
+            },
+        )
+
+        self.assertRedirects(response, reverse("account_email_verification_sent"))
+        self.assertEqual(get_user_model().objects.filter(email=existing.email).count(), 1)
+        self.assertFalse(CustomerProfile.objects.filter(user=existing).exists())
+        verification_page = self.client.get(reverse("account_email_verification_sent"))
+        self.assertContains(verification_page, "check your spam or junk folder")
+
     def test_logged_in_customer_request_is_attached_to_their_profile(self):
         user = get_user_model().objects.create_user(
             email="requester@example.com", password="customer-password"
@@ -835,7 +864,28 @@ class BookingFlowTests(TestCase):
         )
         self.assertIn("Aster Bekele", notification.message)
         self.assertIn(str(quote_request.public_id), notification.action_url)
-        self.assertEqual(notification.email_status, Notification.EmailStatus.SENT)
+        self.assertEqual(notification.email_status, Notification.EmailStatus.SKIPPED)
+        customer_notice = Notification.objects.get(
+            recipient_email="aster@example.com",
+            kind=Notification.Kind.QUOTE_NEW,
+        )
+        support_notice = Notification.objects.get(
+            recipient__isnull=True,
+            recipient_email="support@akakohouse.com",
+            kind=Notification.Kind.QUOTE_NEW,
+        )
+        self.assertEqual(customer_notice.email_status, Notification.EmailStatus.SENT)
+        self.assertEqual(support_notice.email_status, Notification.EmailStatus.SENT)
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertEqual(
+            {message.to[0] for message in mail.outbox},
+            {"aster@example.com", "support@akakohouse.com"},
+        )
+        customer_email = next(
+            message for message in mail.outbox if message.to == ["aster@example.com"]
+        )
+        self.assertIn("Next steps", customer_email.body)
+        self.assertIn("24", customer_email.body)
 
     def test_dashboard_loads(self):
         response = self.client.get(reverse("operations_dashboard"))

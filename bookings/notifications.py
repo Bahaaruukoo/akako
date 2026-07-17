@@ -95,6 +95,63 @@ def quote_customer_user(quote):
     return quote.customer.user if quote.customer_id and quote.customer.user_id else None
 
 
+def notify_quote_submitted(quote):
+    event_key = f"quote:{quote.pk}:submitted"
+    event_time = (
+        quote.event_time.strftime("%I:%M %p").lstrip("0")
+        if quote.event_time
+        else "To be confirmed"
+    )
+    customer_message = (
+        f"Hi {quote.customer_name},\n\n"
+        "We received your Akako House ceremony request.\n\n"
+        f"Event: {quote.get_event_type_display()}\n"
+        f"Date: {quote.event_date}\n"
+        f"Time: {event_time}\n"
+        f"Location: {quote.location}\n"
+        f"Guests: {quote.guest_count}\n\n"
+        "Next steps: our team will review the request, confirm ceremony-partner availability, "
+        "and email you a custom quote. No payment is due until you review and accept that quote.\n\n"
+        "If you do not see future messages from us, please check your spam or junk folder."
+    )
+    create_notification(
+        kind=Notification.Kind.QUOTE_NEW,
+        title="We received your ceremony request",
+        message=customer_message,
+        event_key=f"{event_key}:customer",
+        recipient=quote_customer_user(quote),
+        email_address=quote.email,
+        action_url=reverse("quote_success", args=[quote.public_id]),
+        send_email=True,
+        email_subject="We received your Akako House ceremony request",
+        email_message=customer_message,
+    )
+
+    staff_message = (
+        f"{quote.customer_name} requested a {quote.get_event_type_display()} "
+        f"for {quote.event_date} in {quote.location} for {quote.guest_count} guests."
+    )
+    staff_action_url = reverse("manage_quote", args=[quote.public_id])
+    notify_staff(
+        kind=Notification.Kind.QUOTE_NEW,
+        title="New quote request",
+        message=staff_message,
+        event_key=f"{event_key}:staff",
+        action_url=staff_action_url,
+        send_email=False,
+    )
+    create_notification(
+        kind=Notification.Kind.QUOTE_NEW,
+        title="New quote request",
+        message=staff_message,
+        event_key=f"{event_key}:support",
+        email_address=settings.SUPPORT_EMAIL,
+        action_url=staff_action_url,
+        send_email=True,
+        email_subject=f"New quote request from {quote.customer_name}",
+    )
+
+
 def notify_quote_accepted(quote):
     action_url = reverse("customer_quote_detail", args=[quote.public_id]) if quote.customer_id else reverse("quote_review", args=[quote.public_id])
     create_notification(
