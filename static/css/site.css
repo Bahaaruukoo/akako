@@ -2912,6 +2912,14 @@ mark {
 .side-nav-button { background: transparent; border: 0; color: inherit; cursor: pointer; font: inherit; padding: 0; text-align: left; width: 100%; }
 .side-nav a:has(.nav-alert-badge) { align-items: center; display: flex; justify-content: space-between; }
 .nav-alert-badge { align-items: center; background: #c8322b; border-radius: 999px; color: #fff; display: inline-flex; font-size: .72rem; font-weight: 900; justify-content: center; line-height: 1; min-height: 22px; min-width: 22px; padding: 4px 7px; }
+
+.quote-queue-alert { align-items: center; background: #fff2d8; border: 1px solid #d9961a; border-radius: 14px; color: #482317; display: flex; gap: 10px 18px; justify-content: space-between; margin-bottom: 18px; padding: 14px 18px; }
+.quote-queue-alert span { color: #744c29; font-size: .92rem; }
+.queue-response-label, .queue-new-label { color: #a42c25; font-weight: 800; margin-top: 5px; }
+
+@media (max-width: 640px) {
+  .quote-queue-alert { align-items: flex-start; flex-direction: column; gap: 3px; }
+}
 .application-badge, .review-banner { border-radius: 10px; padding: 12px 16px; }
 .application-badge { background: #f1e4c8; font-weight: 850; }
 .status-approved { background: #dcebd8; color: var(--green-dark); }

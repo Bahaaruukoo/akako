@@ -1,6 +1,14 @@
 from django.conf import settings
+from django.db.models import Q
 
-from .models import CustomerReview, Notification, PartnerDocument, PartnerGalleryPhoto
+from .models import (
+    AvailabilityOffer,
+    CustomerReview,
+    Notification,
+    PartnerDocument,
+    PartnerGalleryPhoto,
+    QuoteRequest,
+)
 
 
 def notification_alerts(request):
@@ -18,18 +26,28 @@ def staff_partner_alerts(request):
     user = request.user
     if not user.is_authenticated or not user.is_staff:
         return {}
-    if not user.has_perm("bookings.view_partner"):
-        return {}
-    pending_partner_documents = PartnerDocument.objects.filter(
-        review_status=PartnerDocument.ReviewStatus.PENDING
-    ).count()
-    return {
-        "pending_partner_document_count": pending_partner_documents,
-        "pending_content_count": (
+    alerts = {}
+    if user.has_perm("bookings.view_partner"):
+        alerts["pending_partner_document_count"] = PartnerDocument.objects.filter(
+            review_status=PartnerDocument.ReviewStatus.PENDING
+        ).count()
+        alerts["pending_content_count"] = (
             PartnerGalleryPhoto.objects.filter(status=PartnerGalleryPhoto.Status.PENDING).count()
             + CustomerReview.objects.filter(status=CustomerReview.Status.PENDING).count()
-        ),
-    }
+        )
+    if user.has_perm("bookings.view_quoterequest"):
+        actionable_quotes = QuoteRequest.objects.filter(
+            Q(status=QuoteRequest.Status.NEW)
+            | Q(
+                status__in=[QuoteRequest.Status.REVIEWING, QuoteRequest.Status.WAITLISTED],
+                availability_offers__status__in=[
+                    AvailabilityOffer.Status.ACCEPTED,
+                    AvailabilityOffer.Status.DECLINED,
+                ],
+            )
+        ).distinct()
+        alerts["quote_attention_count"] = actionable_quotes.count()
+    return alerts
 
 
 def site_contact_details(request):

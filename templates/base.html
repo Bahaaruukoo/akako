@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Buna Ceremony{% endblock %}</title>
+  <title>{% block title %}Akako House{% endblock %}</title>
   <meta name="description" content="{% block meta_description %}Akako House brings authentic Ethiopian coffee ceremony experiences to gatherings across the Washington, DC metropolitan area.{% endblock %}">
   <link rel="canonical" href="{{ site_url }}{{ request.path }}">
   <meta property="og:type" content="website">
@@ -15,8 +15,9 @@
   <meta property="og:image" content="{{ site_url }}{% static 'images/akako-coffee-pouring.jpg' %}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" content="#34752f">
-  <link rel="icon" href="{% static 'images/bunago-logo-extracted.png' %}">
-  <link rel="apple-touch-icon" href="{% static 'images/bunago-logo-extracted.png' %}">
+  <link rel="icon" type="image/x-icon" href="{% static 'images/akako-jebena-favicon.ico' %}">
+  <link rel="icon" type="image/png" sizes="512x512" href="{% static 'images/akako-jebena-favicon.png' %}">
+  <link rel="apple-touch-icon" href="{% static 'images/akako-jebena-favicon.png' %}">
   <link rel="stylesheet" href="{% static 'css/site.css' %}">
   {% if analytics_id %}
     <script async src="https://www.googletagmanager.com/gtag/js?id={{ analytics_id|urlencode }}"></script>

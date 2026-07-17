@@ -877,6 +877,54 @@ class BookingFlowTests(TestCase):
         self.assertContains(response, "Quote requests")
         self.assertContains(response, "All statuses")
 
+    def test_quote_queue_badge_includes_new_requests_and_partner_replies(self):
+        new_quote = QuoteRequest.objects.create(
+            event_type=QuoteRequest.EventType.HOME,
+            event_date=date(2026, 8, 12),
+            location="Silver Spring, MD",
+            guest_count=12,
+        )
+        answered_quote = QuoteRequest.objects.create(
+            event_type=QuoteRequest.EventType.CORPORATE,
+            event_date=date(2026, 8, 14),
+            event_time=time(14, 0),
+            location="Washington, DC",
+            guest_count=30,
+            status=QuoteRequest.Status.REVIEWING,
+        )
+        partner = Partner.objects.create(
+            name="Availability Partner",
+            partner_type=Partner.PartnerType.INDIVIDUAL,
+            contact_name="Almaz",
+            email="availability@example.com",
+            phone="555-0188",
+            service_area="Washington, DC",
+        )
+        AvailabilityOffer.objects.create(
+            quote=answered_quote,
+            partner=partner,
+            status=AvailabilityOffer.Status.DECLINED,
+            expires_at=timezone.now() + timezone.timedelta(days=1),
+            responded_at=timezone.now(),
+            created_by=self.staff_user,
+        )
+
+        response = self.client.get(reverse("quote_requests"))
+
+        self.assertEqual(response.context["quote_attention_count"], 2)
+        self.assertEqual(response.context["new_quote_count"], 1)
+        self.assertEqual(response.context["answered_availability_count"], 1)
+        self.assertContains(response, "2 requests need attention")
+        self.assertContains(response, "Availability answered")
+        self.assertContains(response, "Needs review")
+
+        new_quote.status = QuoteRequest.Status.QUOTED
+        new_quote.save(update_fields=["status", "updated_at"])
+        answered_quote.status = QuoteRequest.Status.QUOTED
+        answered_quote.save(update_fields=["status", "updated_at"])
+        response = self.client.get(reverse("quote_requests"))
+        self.assertEqual(response.context["quote_attention_count"], 0)
+
     def test_business_insights_reports_custom_date_range(self):
         completed = self.create_ceremony(event_date=date(2026, 8, 10))
         completed.status = Ceremony.Status.COMPLETED

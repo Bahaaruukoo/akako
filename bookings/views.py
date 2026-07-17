@@ -1334,7 +1334,20 @@ def quote_requests(request):
     process_workflow_deadlines(request.user)
     selected_status = request.GET.get("status", "")
     search = request.GET.get("q", "").strip()
-    queryset = QuoteRequest.objects.select_related("ceremony").all()
+    answered_offer_statuses = [
+        AvailabilityOffer.Status.ACCEPTED,
+        AvailabilityOffer.Status.DECLINED,
+    ]
+    queryset = QuoteRequest.objects.select_related("ceremony").prefetch_related(
+        "availability_offers"
+    )
+    new_quote_count = QuoteRequest.objects.filter(status=QuoteRequest.Status.NEW).count()
+    answered_availability_quote_ids = set(
+        QuoteRequest.objects.filter(
+            status__in=[QuoteRequest.Status.REVIEWING, QuoteRequest.Status.WAITLISTED],
+            availability_offers__status__in=answered_offer_statuses,
+        ).values_list("pk", flat=True)
+    )
     valid_statuses = {value for value, _label in QuoteRequest.Status.choices}
     if selected_status in valid_statuses:
         queryset = queryset.filter(status=selected_status)
@@ -1354,6 +1367,9 @@ def quote_requests(request):
             "status_choices": QuoteRequest.Status.choices,
             "selected_status": selected_status,
             "search": search,
+            "new_quote_count": new_quote_count,
+            "answered_availability_count": len(answered_availability_quote_ids),
+            "answered_availability_quote_ids": answered_availability_quote_ids,
         },
     )
 
