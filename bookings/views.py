@@ -62,6 +62,8 @@ from .models import (
     PartnerTask,
     Payment,
     PaymentCheckout,
+    PolicyAcceptance,
+    PolicyDocument,
     QuoteRequest,
     ShopInterest,
     Testimonial,
@@ -818,7 +820,33 @@ def quote_review(request, public_id):
         quote_request.save(update_fields=["status", "updated_at"])
         release_quote_holds(quote_request, "Customer quote expired.", expired=True)
         notify_quote_expired(quote_request)
-    return render(request, "bookings/quote_review.html", {"quote_request": quote_request})
+    return render(request, "bookings/quote_review.html", {
+        "quote_request": quote_request,
+        "policies": PolicyDocument.objects.filter(is_active=True),
+    })
+
+
+def policy_detail(request, policy_type):
+    valid_types = {value for value, _label in PolicyDocument.PolicyType.choices}
+    if policy_type not in valid_types:
+        raise Http404("Policy not found.")
+    policy = get_object_or_404(
+        PolicyDocument, policy_type=policy_type, is_active=True
+    )
+    return render(request, "bookings/policy_detail.html", {"policy": policy})
+
+
+def accepted_policy_detail(request, public_id, acceptance_id):
+    acceptance = get_object_or_404(
+        PolicyAcceptance.objects.select_related("quote", "policy"),
+        pk=acceptance_id,
+        quote__public_id=public_id,
+    )
+    return render(
+        request,
+        "bookings/accepted_policy_detail.html",
+        {"acceptance": acceptance},
+    )
 
 
 def quote_decision(request, public_id, decision):
@@ -836,13 +864,34 @@ def quote_decision(request, public_id, decision):
         messages.info(request, "This quote has already received a decision.")
         return redirect("quote_review", public_id=quote_request.public_id)
     if decision == "accept":
+        policies = list(PolicyDocument.objects.filter(is_active=True))
+        if not policies:
+            messages.error(request, "Policy documents are temporarily unavailable. Please contact Akako House.")
+            return redirect("quote_review", public_id=quote_request.public_id)
+        if request.POST.get("policy_consent") != "on":
+            messages.error(request, "Please review and agree to the policies before accepting the quote.")
+            return redirect("quote_review", public_id=quote_request.public_id)
         hold = quote_request.active_capacity_hold
         if not hold:
             messages.error(request, "Partner availability changed before acceptance. Akako House will confirm a replacement and update your quote.")
             quote_request.status = QuoteRequest.Status.WAITLISTED
             quote_request.save(update_fields=["status", "updated_at"])
             return redirect("quote_review", public_id=quote_request.public_id)
-        ceremony = quote_request.accept_quote()
+        with transaction.atomic():
+            for policy in policies:
+                PolicyAcceptance.objects.get_or_create(
+                    quote=quote_request,
+                    policy=policy,
+                    defaults={
+                        "policy_title": policy.title,
+                        "policy_version": policy.version,
+                        "policy_content": policy.content,
+                        "accepted_name": quote_request.customer_name,
+                        "accepted_email": quote_request.email,
+                        "ip_address": request.META.get("REMOTE_ADDR") or None,
+                    },
+                )
+            ceremony = quote_request.accept_quote()
         hold.status = CapacityHold.Status.CONFIRMED
         hold.expires_at = None
         hold.save(update_fields=["status", "expires_at", "updated_at"])
@@ -905,6 +954,7 @@ def ceremony_payment(request, public_id):
             ),
             "checkout_success": request.GET.get("checkout") == "success",
             "checkout_cancelled": request.GET.get("checkout") == "cancelled",
+            "policy_acceptances": ceremony.quote.policy_acceptances.all(),
         },
     )
 
@@ -1010,9 +1060,12 @@ def operations_dashboard(request):
     process_workflow_deadlines(request.user)
     today = timezone.localdate()
     expiry_warning_date = today + timezone.timedelta(days=settings.DOCUMENT_EXPIRY_WARNING_DAYS)
+    submitted_quotes = QuoteRequest.objects.exclude(
+        customer_name=""
+    ).exclude(email="").exclude(phone="")
     quote_counts = {
         item["status"]: item["total"]
-        for item in QuoteRequest.objects.values("status").annotate(total=Count("id"))
+        for item in submitted_quotes.values("status").annotate(total=Count("id"))
     }
     ceremony_counts = {
         item["status"]: item["total"]
@@ -1044,7 +1097,7 @@ def operations_dashboard(request):
         "cancellation_queue": CustomerCancellationRequest.objects.select_related(
             "customer", "ceremony__quote"
         ).filter(status=CustomerCancellationRequest.Status.PENDING)[:8],
-        "waiting_quotes": QuoteRequest.objects.filter(
+        "waiting_quotes": submitted_quotes.filter(
             status__in=[QuoteRequest.Status.NEW, QuoteRequest.Status.REVIEWING]
         ).order_by("created_at")[:8],
         "capacity_queue": QuoteRequest.objects.filter(
@@ -1338,12 +1391,15 @@ def quote_requests(request):
         AvailabilityOffer.Status.ACCEPTED,
         AvailabilityOffer.Status.DECLINED,
     ]
-    queryset = QuoteRequest.objects.select_related("ceremony").prefetch_related(
+    submitted_quotes = QuoteRequest.objects.exclude(
+        customer_name=""
+    ).exclude(email="").exclude(phone="")
+    queryset = submitted_quotes.select_related("ceremony").prefetch_related(
         "availability_offers"
     )
-    new_quote_count = QuoteRequest.objects.filter(status=QuoteRequest.Status.NEW).count()
+    new_quote_count = submitted_quotes.filter(status=QuoteRequest.Status.NEW).count()
     answered_availability_quote_ids = set(
-        QuoteRequest.objects.filter(
+        submitted_quotes.filter(
             status__in=[QuoteRequest.Status.REVIEWING, QuoteRequest.Status.WAITLISTED],
             availability_offers__status__in=answered_offer_statuses,
         ).values_list("pk", flat=True)

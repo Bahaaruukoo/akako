@@ -13,6 +13,7 @@ urlpatterns = [
     path("about/", views.about, name="about"),
     path("shop/", views.shop, name="shop"),
     path("contact/", views.contact, name="contact"),
+    path("policies/<str:policy_type>/", views.policy_detail, name="policy_detail"),
     path("partners/register/", views.partner_registration, name="partner_registration"),
     path("customers/register/", views.customer_registration, name="customer_registration"),
     path("partners/login/", account_views.LoginView.as_view(template_name="account/login.html"), name="partner_login"),
@@ -38,6 +39,7 @@ urlpatterns = [
     path("quote/<uuid:public_id>/contact/", views.quote_contact, name="quote_contact"),
     path("quote/<uuid:public_id>/success/", views.quote_success, name="quote_success"),
     path("quote/<uuid:public_id>/review/", views.quote_review, name="quote_review"),
+    path("quote/<uuid:public_id>/policies/<int:acceptance_id>/", views.accepted_policy_detail, name="accepted_policy_detail"),
     path("quote/<uuid:public_id>/<str:decision>/", views.quote_decision, name="quote_decision"),
     path("ceremony/<uuid:public_id>/payment/", views.ceremony_payment, name="ceremony_payment"),
     path(

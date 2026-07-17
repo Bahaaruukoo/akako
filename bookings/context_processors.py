@@ -36,7 +36,9 @@ def staff_partner_alerts(request):
             + CustomerReview.objects.filter(status=CustomerReview.Status.PENDING).count()
         )
     if user.has_perm("bookings.view_quoterequest"):
-        actionable_quotes = QuoteRequest.objects.filter(
+        actionable_quotes = QuoteRequest.objects.exclude(
+            customer_name=""
+        ).exclude(email="").exclude(phone="").filter(
             Q(status=QuoteRequest.Status.NEW)
             | Q(
                 status__in=[QuoteRequest.Status.REVIEWING, QuoteRequest.Status.WAITLISTED],

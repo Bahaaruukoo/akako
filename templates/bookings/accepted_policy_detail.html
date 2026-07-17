@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Accepted {{ acceptance.policy_title }} | Akako House{% endblock %}
+
+{% block content %}
+<main class="policy-page">
+  <article class="policy-document">
+    <a class="mini-brand" href="{% url 'home' %}">Akako <span>House</span></a>
+    <p class="eyebrow">Accepted policy record</p>
+    <h1>{{ acceptance.policy_title }}</h1>
+    <p class="policy-version">Version {{ acceptance.policy_version }} · Accepted {{ acceptance.accepted_at }}</p>
+    <div class="policy-acceptance-summary"><strong>Accepted by {{ acceptance.accepted_name }}</strong><span>{{ acceptance.accepted_email }}</span></div>
+    <div class="policy-content">{{ acceptance.policy_content|linebreaks }}</div>
+  </article>
+</main>
+{% endblock %}

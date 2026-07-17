@@ -51,10 +51,22 @@
     {% endif %}
 
     {% if quote_request.status == quote_request.Status.QUOTED and not quote_request.quote_expired %}
+      <section class="policy-consent-panel">
+        <p class="eyebrow">Before you accept</p>
+        <h2>Review the policies for your ceremony</h2>
+        <div class="policy-link-list">
+          {% for policy in policies %}
+            <a href="{% url 'policy_detail' policy.policy_type %}" target="_blank" rel="noopener"><span>{{ policy.title }}</span><small>Version {{ policy.version }} · Effective {{ policy.effective_date }}</small></a>
+          {% empty %}
+            <p>Policy documents are temporarily unavailable.</p>
+          {% endfor %}
+        </div>
+      </section>
       <div class="quote-actions">
         <form method="post" action="{% url 'quote_decision' quote_request.public_id 'accept' %}">
           {% csrf_token %}
-          <button class="button primary" type="submit" data-confirm="Accept this quote and continue to payment options? The accepted quote will be locked.">Accept Quote</button>
+          <label class="policy-consent-check"><input type="checkbox" name="policy_consent" required> <span>I have reviewed and agree to the policies listed above. I understand that accepting locks this quote.</span></label>
+          <button class="button primary" type="submit" data-confirm="Accept this quote and continue to payment options? Your policy agreement and quote will be recorded.">Accept Quote</button>
         </form>
         <form method="post" action="{% url 'quote_decision' quote_request.public_id 'decline' %}">
           {% csrf_token %}
@@ -63,6 +75,7 @@
       </div>
     {% elif quote_request.status == quote_request.Status.ACCEPTED %}
       <p class="decision-note">You accepted this quote. We will follow up with payment and scheduling details.</p>
+      {% if quote_request.policy_acceptances.exists %}<p class="accepted-policy-note">Your policy agreement was recorded with this quote.</p>{% endif %}
       {% if quote_request.ceremony %}<a class="button primary full" href="{% url 'ceremony_payment' quote_request.ceremony.public_id %}">Continue to Payment Options</a>{% endif %}
     {% elif quote_request.status == quote_request.Status.DECLINED %}
       <p class="decision-note">You declined this quote.</p>

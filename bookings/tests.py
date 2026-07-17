@@ -30,6 +30,8 @@ from .models import (
     PartnerTask,
     Payment,
     PaymentCheckout,
+    PolicyAcceptance,
+    PolicyDocument,
     QuoteRequest,
     ShopInterest,
     Testimonial,
@@ -879,12 +881,18 @@ class BookingFlowTests(TestCase):
 
     def test_quote_queue_badge_includes_new_requests_and_partner_replies(self):
         new_quote = QuoteRequest.objects.create(
+            customer_name="Aster Bekele",
+            email="aster@example.com",
+            phone="555-0101",
             event_type=QuoteRequest.EventType.HOME,
             event_date=date(2026, 8, 12),
             location="Silver Spring, MD",
             guest_count=12,
         )
         answered_quote = QuoteRequest.objects.create(
+            customer_name="Hana Tesfaye",
+            email="hana@example.com",
+            phone="555-0102",
             event_type=QuoteRequest.EventType.CORPORATE,
             event_date=date(2026, 8, 14),
             event_time=time(14, 0),
@@ -924,6 +932,21 @@ class BookingFlowTests(TestCase):
         answered_quote.save(update_fields=["status", "updated_at"])
         response = self.client.get(reverse("quote_requests"))
         self.assertEqual(response.context["quote_attention_count"], 0)
+
+    def test_unfinished_quote_draft_is_hidden_from_staff_queue(self):
+        draft = QuoteRequest.objects.create(
+            event_type=QuoteRequest.EventType.HOME,
+            event_date=date(2026, 8, 12),
+            location="Silver Spring, MD",
+            guest_count=12,
+        )
+
+        response = self.client.get(reverse("quote_requests"))
+
+        self.assertNotContains(response, reverse("manage_quote", args=[draft.public_id]))
+        self.assertEqual(response.context["quote_attention_count"], 0)
+        dashboard = self.client.get(reverse("operations_dashboard"))
+        self.assertNotContains(dashboard, reverse("manage_quote", args=[draft.public_id]))
 
     def test_business_insights_reports_custom_date_range(self):
         completed = self.create_ceremony(event_date=date(2026, 8, 10))
@@ -1141,7 +1164,8 @@ class BookingFlowTests(TestCase):
             reverse(
                 "quote_decision",
                 kwargs={"public_id": quote_request.public_id, "decision": "accept"},
-            )
+            ),
+            {"policy_consent": "on"},
         )
 
         self.assertRedirects(
@@ -1150,6 +1174,16 @@ class BookingFlowTests(TestCase):
         )
         quote_request.refresh_from_db()
         self.assertEqual(quote_request.status, QuoteRequest.Status.ACCEPTED)
+        self.assertEqual(
+            quote_request.policy_acceptances.count(),
+            PolicyDocument.objects.filter(is_active=True).count(),
+        )
+        self.assertTrue(
+            quote_request.policy_acceptances.filter(
+                accepted_email=quote_request.email,
+                policy_content__contains="PLACEHOLDER POLICY CONTENT",
+            ).exists()
+        )
         self.assertTrue(hasattr(quote_request, "ceremony"))
         self.assertEqual(quote_request.ceremony.status, Ceremony.Status.AWAITING_DEPOSIT)
         self.assertEqual(quote_request.ceremony.payments.count(), 2)
@@ -1226,7 +1260,9 @@ class BookingFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Thank you for considering Akako House")
         self.assertContains(response, "24 guests")
-        self.assertContains(response, "Non-dairy option")
+        self.assertContains(response, "snack service preference")
+        self.assertNotContains(response, "milk preference")
+        self.assertNotContains(response, "Non-dairy option")
         quote_request.refresh_from_db()
         self.assertEqual(quote_request.quote_notes, "")
 
@@ -1841,7 +1877,10 @@ class BookingFlowTests(TestCase):
         hold = CapacityHold.objects.get(offer=offer)
         self.assertEqual(hold.status, CapacityHold.Status.TEMPORARY)
 
-        self.client.post(reverse("quote_decision", args=[quote.public_id, "accept"]))
+        self.client.post(
+            reverse("quote_decision", args=[quote.public_id, "accept"]),
+            {"policy_consent": "on"},
+        )
         hold.refresh_from_db()
         self.assertEqual(hold.status, CapacityHold.Status.CONFIRMED)
         ceremony = quote.ceremony

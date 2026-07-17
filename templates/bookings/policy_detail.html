@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}{{ policy.title }} | Akako House{% endblock %}
+
+{% block content %}
+<main class="policy-page">
+  <article class="policy-document">
+    <a class="mini-brand" href="{% url 'home' %}">Akako <span>House</span></a>
+    <p class="eyebrow">Customer policy</p>
+    <h1>{{ policy.title }}</h1>
+    <p class="policy-version">Version {{ policy.version }} · Effective {{ policy.effective_date }}</p>
+    <div class="policy-content">{{ policy.content|linebreaks }}</div>
+    <p class="policy-contact">Questions about this policy? Contact <a href="mailto:{{ support_email }}">{{ support_email }}</a>.</p>
+  </article>
+</main>
+{% endblock %}

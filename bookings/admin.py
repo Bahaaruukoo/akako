@@ -23,6 +23,8 @@ from .models import (
     PartnerTask,
     Payment,
     PaymentCheckout,
+    PolicyAcceptance,
+    PolicyDocument,
     QuoteRequest,
     ShopInterest,
     StatusHistory,
@@ -38,6 +40,33 @@ admin.site.register(Testimonial)
 admin.site.register(EventPhoto)
 admin.site.register(PartnerGalleryPhoto)
 admin.site.register(CustomerReview)
+
+
+@admin.register(PolicyDocument)
+class PolicyDocumentAdmin(admin.ModelAdmin):
+    list_display = ("title", "policy_type", "version", "effective_date", "is_active", "updated_at")
+    list_filter = ("policy_type", "is_active", "effective_date")
+    search_fields = ("title", "version", "content")
+
+
+@admin.register(PolicyAcceptance)
+class PolicyAcceptanceAdmin(admin.ModelAdmin):
+    list_display = ("accepted_email", "policy_title", "policy_version", "quote", "accepted_at")
+    list_filter = ("policy__policy_type", "policy_version", "accepted_at")
+    search_fields = ("accepted_name", "accepted_email", "quote__customer_name")
+    readonly_fields = (
+        "quote", "policy", "policy_title", "policy_version", "policy_content",
+        "accepted_name", "accepted_email", "ip_address", "accepted_at",
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(ShopInterest)

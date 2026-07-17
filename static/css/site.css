@@ -2920,6 +2920,28 @@ mark {
 @media (max-width: 640px) {
   .quote-queue-alert { align-items: flex-start; flex-direction: column; gap: 3px; }
 }
+
+.policy-consent-panel, .payment-policy-reference { background: #fffaf0; border: 1px solid #e4c27b; border-radius: 16px; margin: 24px 0; padding: 20px; }
+.policy-consent-panel h2, .payment-policy-reference h2 { margin: 4px 0 14px; }
+.policy-link-list { display: grid; gap: 8px; }
+.policy-link-list a { align-items: center; background: #fff; border: 1px solid #ead9b7; border-radius: 10px; color: #482317; display: flex; justify-content: space-between; padding: 11px 13px; text-decoration: none; }
+.policy-link-list small, .policy-version, .payment-policy-reference small { color: #785f4c; }
+.policy-consent-check { align-items: flex-start; display: flex; gap: 10px; margin-bottom: 14px; text-align: left; }
+.policy-consent-check input { flex: 0 0 auto; margin-top: 4px; }
+.accepted-policy-note, .form-policy-note { color: #6e5747; font-size: .9rem; }
+.form-policy-note { margin: 14px 0 0; text-align: center; }
+.policy-page { background: #fbf3e5; min-height: 100vh; padding: clamp(24px, 6vw, 72px) 20px; }
+.policy-document { background: #fff; border: 1px solid #e4c27b; border-radius: 18px; margin: 0 auto; max-width: 820px; padding: clamp(24px, 5vw, 56px); }
+.policy-document h1 { margin-bottom: 8px; }
+.policy-content { line-height: 1.75; margin-top: 28px; }
+.policy-contact { border-top: 1px solid #ead9b7; margin-top: 34px; padding-top: 18px; }
+.policy-acceptance-summary { background: #edf6ed; border-radius: 10px; display: flex; flex-direction: column; margin-top: 20px; padding: 12px 14px; }
+.payment-policy-reference ul { margin-bottom: 0; padding-left: 20px; }
+.payment-policy-reference li + li { margin-top: 8px; }
+
+@media (max-width: 640px) {
+  .policy-link-list a { align-items: flex-start; flex-direction: column; gap: 3px; }
+}
 .application-badge, .review-banner { border-radius: 10px; padding: 12px 16px; }
 .application-badge { background: #f1e4c8; font-weight: 850; }
 .status-approved { background: #dcebd8; color: var(--green-dark); }

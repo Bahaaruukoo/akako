@@ -869,6 +869,68 @@ class ShopInterest(models.Model):
         return self.email
 
 
+class PolicyDocument(models.Model):
+    class PolicyType(models.TextChoices):
+        PRIVACY = "privacy", "Privacy notice"
+        SERVICE = "service", "Service terms"
+        PAYMENT = "payment", "Payment and deposit policy"
+        CANCELLATION = "cancellation", "Cancellation, rescheduling, and refund policy"
+
+    policy_type = models.CharField(max_length=24, choices=PolicyType.choices)
+    title = models.CharField(max_length=160)
+    version = models.CharField(max_length=32)
+    content = models.TextField()
+    effective_date = models.DateField(default=timezone.localdate)
+    is_active = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["policy_type", "-effective_date", "-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["policy_type", "version"], name="unique_policy_type_version"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.title} ({self.version})"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.is_active:
+            type(self).objects.filter(policy_type=self.policy_type, is_active=True).exclude(
+                pk=self.pk
+            ).update(is_active=False)
+
+
+class PolicyAcceptance(models.Model):
+    quote = models.ForeignKey(
+        QuoteRequest, on_delete=models.PROTECT, related_name="policy_acceptances"
+    )
+    policy = models.ForeignKey(
+        PolicyDocument, on_delete=models.PROTECT, related_name="acceptances"
+    )
+    policy_title = models.CharField(max_length=160)
+    policy_version = models.CharField(max_length=32)
+    policy_content = models.TextField()
+    accepted_name = models.CharField(max_length=120)
+    accepted_email = models.EmailField()
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    accepted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["accepted_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["quote", "policy"], name="unique_quote_policy_acceptance"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.accepted_email} accepted {self.policy_title} {self.policy_version}"
+
+
 class Notification(models.Model):
     class Kind(models.TextChoices):
         QUOTE_NEW = "quote_new", "New quote request"

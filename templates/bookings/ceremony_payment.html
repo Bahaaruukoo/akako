@@ -32,6 +32,9 @@
     </div>
     {% if not coverage_confirmed %}<p class="checkout-disabled-note">Payment is temporarily paused while Akako House reconfirms the ceremony partner. You will not lose your place in the request queue.</p>{% elif not checkout_enabled %}<p class="checkout-disabled-note">Online checkout is not active yet. Please contact Akako House to arrange payment.</p>{% endif %}
     {% if outstanding == 0 %}<div class="payment-return-note success"><strong>Paid in full</strong><p>No payment is currently due.</p></div>{% endif %}
+    {% if policy_acceptances %}
+      <section class="payment-policy-reference"><h2>Your accepted policies</h2><p>These exact policy versions were recorded when you accepted the quote.</p><ul>{% for acceptance in policy_acceptances %}<li><a href="{% url 'accepted_policy_detail' quote_request.public_id acceptance.pk %}" target="_blank" rel="noopener">{{ acceptance.policy_title }}</a> <small>Version {{ acceptance.policy_version }} · accepted {{ acceptance.accepted_at }}</small></li>{% endfor %}</ul></section>
+    {% endif %}
   </section>
 </main>
 {% endblock %}
