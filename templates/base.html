@@ -29,10 +29,40 @@
   <div id="page-content">{% block content %}{% endblock %}</div>
   {% include "bookings/_site_footer.html" %}
   <script>
+    const quoteDialog = document.querySelector("#request.bunago-quote-card");
+    let quoteDialogTrigger = null;
+
+    function mobileQuoteDialogEnabled() {
+      return window.matchMedia("(max-width: 720px)").matches;
+    }
+
+    function openQuoteDialog(trigger) {
+      if (!quoteDialog || !mobileQuoteDialogEnabled()) return false;
+      quoteDialogTrigger = trigger || document.activeElement;
+      if (!quoteDialog.open) quoteDialog.showModal();
+      return true;
+    }
+
+    function closeQuoteDialog() {
+      if (!quoteDialog || !quoteDialog.open) return;
+      quoteDialog.close();
+      if (quoteDialogTrigger && typeof quoteDialogTrigger.focus === "function") {
+        quoteDialogTrigger.focus();
+      }
+    }
+
     document.addEventListener("click", function (event) {
       const action = event.target.closest("[data-confirm]");
       if (action && !window.confirm(action.dataset.confirm)) {
         event.preventDefault();
+      }
+
+      const quoteTrigger = event.target.closest("a[href='#request']");
+      if (quoteTrigger && openQuoteDialog(quoteTrigger)) {
+        event.preventDefault();
+      }
+      if (event.target.closest("[data-close-quote-dialog]")) {
+        closeQuoteDialog();
       }
 
       const conversion = event.target.closest("[data-conversion]");
@@ -87,6 +117,23 @@
         }
       }
     });
+
+    document.addEventListener("DOMContentLoaded", function () {
+      if (
+        quoteDialog
+        && mobileQuoteDialogEnabled()
+        && (quoteDialog.dataset.hasErrors === "true" || window.location.hash === "#request")
+      ) {
+        openQuoteDialog(null);
+      }
+    });
+
+    if (quoteDialog) {
+      quoteDialog.addEventListener("click", function (event) {
+        const bounds = quoteDialog.getBoundingClientRect();
+        if (event.clientY < bounds.top) closeQuoteDialog();
+      });
+    }
   </script>
 </body>
 </html>

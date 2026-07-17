@@ -110,10 +110,11 @@
       <img src="{% static 'images/ceremony-background-kolo.webp' %}" alt="" width="1536" height="1024" fetchpriority="high">
     </div>
 
-    <aside class="bunago-quote-card" id="request" aria-labelledby="quote-title">
+    <dialog class="bunago-quote-card" id="request" aria-labelledby="quote-title" data-has-errors="{{ form.errors|yesno:'true,false' }}">
       <div class="quote-title-row">
         <span class="quote-calendar-icon" aria-hidden="true"></span>
         <h2 id="quote-title">Plan Your Ceremony</h2>
+        <button class="quote-dialog-close" type="button" aria-label="Close quote form" data-close-quote-dialog>&times;</button>
       </div>
 
       {% if messages %}
@@ -149,7 +150,7 @@
         <button class="button primary full" type="submit">Request My Custom Quote</button>
         <p class="response-note"><span aria-hidden="true">♢</span>Most requests receive a response within 1 business day.</p>
       </form>
-    </aside>
+    </dialog>
   </section>
 
   <section class="bunago-process" id="process" aria-label="How it works">
