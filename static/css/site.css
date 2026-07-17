@@ -144,6 +144,8 @@ a {
 
 .header-access-actions form { margin: 0; }
 
+.mobile-home-nav { display: none; }
+
 .nav-account-button {
   align-items: center;
   background: transparent;
@@ -1100,20 +1102,121 @@ a {
 }
 
 @media (max-width: 720px) {
-  .bunago-header,
+  .bunago-header {
+    gap: 12px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 76px;
+    padding: 10px 18px;
+    position: relative;
+    z-index: 20;
+  }
+
+  .bunago-header > .bunago-nav,
+  .bunago-header > .header-access-actions { display: none; }
+
+  .akako-wordmark { font-size: 1.75rem; gap: 7px; }
+  .akako-logo-mark { flex-basis: 56px; height: 56px; width: 56px; }
+  .akako-logo-mark img { height: 56px; }
+
+  .mobile-home-nav { display: block; justify-self: end; position: relative; }
+  .mobile-home-nav summary {
+    align-items: center;
+    border: 1px solid rgba(52, 117, 47, .35);
+    border-radius: 8px;
+    cursor: pointer;
+    display: grid;
+    gap: 5px;
+    height: 46px;
+    justify-content: center;
+    list-style: none;
+    width: 48px;
+  }
+  .mobile-home-nav summary::-webkit-details-marker { display: none; }
+  .mobile-home-nav summary span { background: var(--green-dark); border-radius: 2px; display: block; height: 2px; width: 22px; }
+  .mobile-home-nav[open] summary span:first-child { transform: translateY(7px) rotate(45deg); }
+  .mobile-home-nav[open] summary span:nth-child(2) { opacity: 0; }
+  .mobile-home-nav[open] summary span:last-child { transform: translateY(-7px) rotate(-45deg); }
+  .mobile-home-nav nav {
+    background: #fffdf8;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 18px 40px rgba(47, 31, 15, .18);
+    display: grid;
+    min-width: min(310px, calc(100vw - 36px));
+    padding: 10px;
+    position: absolute;
+    right: 0;
+    top: 54px;
+  }
+  .mobile-home-nav nav a,
+  .mobile-home-nav nav button {
+    background: transparent;
+    border: 0;
+    border-radius: 7px;
+    color: var(--coffee);
+    display: block;
+    font: inherit;
+    font-weight: 750;
+    padding: 12px 14px;
+    text-align: left;
+    width: 100%;
+  }
+  .mobile-home-nav nav a:hover,
+  .mobile-home-nav nav button:hover { background: var(--ivory); }
+  .mobile-home-nav nav .mobile-nav-primary { background: var(--green-dark); color: #fff; margin: 5px 0; }
+  .mobile-home-nav form { margin: 0; }
+
   .bunago-hero {
-    padding-left: 20px;
-    padding-right: 20px;
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    padding: 26px 20px 38px;
   }
 
-  .bunago-nav {
-    flex-wrap: wrap;
-    gap: 18px;
+  .hero-left {
+    left: auto;
+    order: 1;
+    padding: 0;
+    position: relative;
+    top: auto;
+    width: auto;
   }
+  .hero-kicker { font-size: .72rem !important; line-height: 1.45; }
+  .hero-left h1 { font-size: clamp(2.35rem, 11.5vw, 3rem); line-height: 1.02; white-space: normal; }
+  .hero-left p { font-size: 1.05rem; max-width: none; }
+  .hero-actions { justify-items: stretch; }
+  .hero-actions > div { width: 100%; }
+  .hero-actions .button { min-width: 0; width: 100%; }
 
-  .hero-left h1 {
-    font-size: 3.2rem;
+  .hero-photo {
+    bottom: auto;
+    display: block;
+    height: 240px;
+    left: auto;
+    margin: 28px -20px 0;
+    order: 2;
+    position: relative;
+    right: auto;
+    top: auto;
   }
+  .hero-photo::before { width: 22%; }
+  .hero-photo::after { width: 15%; }
+  .hero-photo img { object-fit: cover; }
+
+  .bunago-quote-card {
+    margin: 24px 0 0;
+    order: 3;
+    padding: 22px 16px 20px;
+    position: relative;
+    right: auto;
+    top: auto;
+    width: auto;
+  }
+  .quote-title-row { margin-bottom: 18px; }
+  .quote-calendar-icon { flex: 0 0 44px; height: 44px; width: 44px; }
+  .bunago-quote-card h2 { font-size: 1.35rem; }
+  .bunago-form input,
+  .bunago-form select { font-size: 16px; min-height: 46px; }
 
   .bunago-process {
     margin-left: 20px;
