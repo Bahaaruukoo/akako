@@ -26,6 +26,8 @@ from .notifications import (
     notify_ceremony_reminder_records,
     notify_document_expired,
     notify_document_expiring,
+    notify_capacity_hold_created,
+    notify_capacity_hold_released,
     notify_final_payment_reminder,
     notify_payment_received,
     notify_quote_expired,
@@ -116,10 +118,16 @@ def accept_availability_offer(offer, *, notes="", confirmed_by_staff=False):
     offer.response_notes = notes or ("Confirmed by staff." if confirmed_by_staff else "")
     offer.responded_at = timezone.now()
     offer.save(update_fields=["status", "response_notes", "responded_at"])
-    CapacityHold.objects.filter(quote=offer.quote, status__in=ACTIVE_HOLD_STATUSES).update(
-        status=CapacityHold.Status.RELEASED,
-        release_reason="Replaced by a newly accepted partner hold.",
+    replaced_holds = list(
+        CapacityHold.objects.filter(quote=offer.quote, status__in=ACTIVE_HOLD_STATUSES)
     )
+    for replaced_hold in replaced_holds:
+        replaced_hold.status = CapacityHold.Status.RELEASED
+        replaced_hold.release_reason = "Replaced by a newly accepted partner hold."
+        replaced_hold.save(update_fields=["status", "release_reason", "updated_at"])
+        transaction.on_commit(
+            lambda hold=replaced_hold: notify_capacity_hold_released(hold)
+        )
     hold = CapacityHold.objects.create(
         quote=offer.quote,
         partner=offer.partner,
@@ -133,15 +141,21 @@ def accept_availability_offer(offer, *, notes="", confirmed_by_staff=False):
         status=AvailabilityOffer.Status.CANCELLED,
         responded_at=timezone.now(),
     )
+    transaction.on_commit(
+        lambda: notify_capacity_hold_created(hold, confirmed_by_staff=confirmed_by_staff)
+    )
     return hold
 
 
 def release_quote_holds(quote, reason, *, expired=False):
-    return quote.capacity_holds.filter(status__in=ACTIVE_HOLD_STATUSES).update(
-        status=CapacityHold.Status.EXPIRED if expired else CapacityHold.Status.RELEASED,
-        release_reason=reason,
-        updated_at=timezone.now(),
-    )
+    holds = list(quote.capacity_holds.filter(status__in=ACTIVE_HOLD_STATUSES))
+    new_status = CapacityHold.Status.EXPIRED if expired else CapacityHold.Status.RELEASED
+    for hold in holds:
+        hold.status = new_status
+        hold.release_reason = reason
+        hold.save(update_fields=["status", "release_reason", "updated_at"])
+        transaction.on_commit(lambda hold=hold: notify_capacity_hold_released(hold))
+    return len(holds)
 
 
 @transaction.atomic
@@ -482,14 +496,15 @@ def process_workflow_deadlines(changed_by=None):
         status=AvailabilityOffer.Status.PENDING,
         expires_at__lt=timezone.now(),
     ).update(status=AvailabilityOffer.Status.EXPIRED, responded_at=timezone.now())
-    CapacityHold.objects.filter(
+    expired_holds = list(CapacityHold.objects.filter(
         status=CapacityHold.Status.TEMPORARY,
         expires_at__lt=timezone.now(),
-    ).update(
-        status=CapacityHold.Status.EXPIRED,
-        release_reason="Temporary reservation expired.",
-        updated_at=timezone.now(),
-    )
+    ))
+    for hold in expired_holds:
+        hold.status = CapacityHold.Status.EXPIRED
+        hold.release_reason = "Temporary reservation expired."
+        hold.save(update_fields=["status", "release_reason", "updated_at"])
+        notify_capacity_hold_released(hold)
 
     ceremonies_checked = 0
     for ceremony in Ceremony.objects.exclude(

@@ -79,6 +79,7 @@
             <button class="button secondary" type="submit" name="action" value="waitlist"{% if quote_locked %} disabled{% endif %}>Move to Waiting List</button>
             <button class="button primary" type="submit" name="action" value="send"{% if quote_locked or not capacity_hold %} disabled{% endif %} data-confirm="Send this quote to the customer now? Confirm the amount, deposit, expiration, notes, and partner hold are correct.">Save &amp; Send to Customer</button>
           </div>
+          {% if not quote_locked and not capacity_hold %}<p class="quote-next-step">Next required step: <a href="#capacity-check">request partner availability</a> after saving the event time.</p>{% endif %}
           {% if quote_locked %}
             <p class="form-help locked-note">This quote has been accepted. Pricing and customer-facing notes are now locked.</p>
           {% else %}
@@ -102,7 +103,7 @@
         </dl>
         {% if quote_request.quote_sent_at %}<p class="sent-note">Last sent {{ quote_request.quote_sent_at }}</p>{% endif %}
 
-        <div class="assignment-panel">
+        <div class="assignment-panel" id="capacity-check">
           <p class="eyebrow">Capacity check</p>
           <h2>{% if capacity_hold %}Time reserved{% else %}Partner needed{% endif %}</h2>
           {% if capacity_hold %}

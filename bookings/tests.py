@@ -1237,9 +1237,12 @@ class BookingFlowTests(TestCase):
         self.assertTrue(hasattr(quote_request, "ceremony"))
         self.assertEqual(quote_request.ceremony.status, Ceremony.Status.AWAITING_DEPOSIT)
         self.assertEqual(quote_request.ceremony.payments.count(), 2)
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertIn("payment option", mail.outbox[0].subject.lower())
-        self.assertIn(str(quote_request.ceremony.public_id), mail.outbox[0].body)
+        self.assertEqual(len(mail.outbox), 2)
+        payment_email = next(message for message in mail.outbox if message.to == [quote_request.email])
+        support_email = next(message for message in mail.outbox if message.to == ["support@akakohouse.com"])
+        self.assertIn("payment option", payment_email.subject.lower())
+        self.assertIn(str(quote_request.ceremony.public_id), payment_email.body)
+        self.assertIn("accepted", support_email.subject.lower())
 
     def test_quote_email_contains_review_link(self):
         quote_request = QuoteRequest.objects.create(
@@ -1506,12 +1509,15 @@ class BookingFlowTests(TestCase):
         ceremony.refresh_from_db()
         self.assertEqual(ceremony.status, Ceremony.Status.READY)
 
+        mail.outbox.clear()
         response = self.client.post(
             reverse("complete_job", kwargs={"public_id": ceremony.public_id})
         )
         self.assertRedirects(response, reverse("ceremonies"))
         ceremony.refresh_from_db()
         self.assertEqual(ceremony.status, Ceremony.Status.COMPLETED)
+        self.assertEqual({message.to[0] for message in mail.outbox}, {"aster@example.com", "almaz@example.com"})
+        self.assertTrue(Notification.objects.filter(kind=Notification.Kind.CEREMONY_COMPLETED).exists())
 
         workspace = self.client.get(
             reverse("ceremony_detail", kwargs={"public_id": ceremony.public_id})
@@ -1879,6 +1885,33 @@ class BookingFlowTests(TestCase):
         self.assertContains(response, "A partner must accept this time")
         self.assertEqual(len(mail.outbox), 0)
 
+    def test_staff_availability_request_emails_selected_partner(self):
+        partner_user = get_user_model().objects.create_user(
+            email="availability-request@example.com", password="partner-password"
+        )
+        partner = Partner.objects.create(
+            user=partner_user, name="Available Partner", contact_name="Almaz",
+            email=partner_user.email, phone="555-0123", service_area="Silver Spring, MD",
+            partner_type=Partner.PartnerType.INDIVIDUAL, food_permit_verified=True,
+            insurance_verified=True, cultural_training_verified=True,
+        )
+        quote = QuoteRequest.objects.create(
+            customer_name="Aster", email="aster@example.com", phone="555-0101",
+            event_type=QuoteRequest.EventType.HOME, event_date=date(2026, 8, 12),
+            event_time=time(15, 30), location="Silver Spring, MD", guest_count=24,
+        )
+
+        response = self.client.post(
+            reverse("create_availability_offer", args=[quote.public_id]),
+            {"partner_id": partner.pk},
+        )
+
+        self.assertRedirects(response, reverse("manage_quote", args=[quote.public_id]))
+        self.assertEqual(AvailabilityOffer.objects.filter(quote=quote, partner=partner).count(), 1)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [partner.email])
+        self.assertIn("availability request", mail.outbox[0].subject.lower())
+
     def test_capacity_conflicts_use_time_windows_not_whole_dates(self):
         first = QuoteRequest.objects.create(
             customer_name="First", email="first@example.com", phone="1",
@@ -1923,9 +1956,14 @@ class BookingFlowTests(TestCase):
             created_by=self.staff_user,
         )
         self.client.force_login(partner_user)
-        self.client.post(reverse("partner_offer_response", args=[offer.pk, "accept"]))
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(reverse("partner_offer_response", args=[offer.pk, "accept"]))
         hold = CapacityHold.objects.get(offer=offer)
         self.assertEqual(hold.status, CapacityHold.Status.TEMPORARY)
+        self.assertTrue(Notification.objects.filter(
+            kind=Notification.Kind.CAPACITY_HOLD_CREATED,
+            recipient=partner_user,
+        ).exists())
 
         self.client.post(
             reverse("quote_decision", args=[quote.public_id, "accept"]),
@@ -1955,12 +1993,17 @@ class BookingFlowTests(TestCase):
             quote_expires_at=timezone.now() - timezone.timedelta(minutes=1),
         )
         hold = self.create_capacity_hold(quote)
-        process_workflow_deadlines(self.staff_user)
+        with self.captureOnCommitCallbacks(execute=True):
+            process_workflow_deadlines(self.staff_user)
         hold.refresh_from_db()
         self.assertEqual(hold.status, CapacityHold.Status.EXPIRED)
         self.assertTrue(Notification.objects.filter(
             kind=Notification.Kind.QUOTE_EXPIRED,
             event_key__contains=f"quote:{quote.pk}:expired",
+        ).exists())
+        self.assertTrue(Notification.objects.filter(
+            kind=Notification.Kind.CAPACITY_HOLD_RELEASED,
+            recipient_email=hold.partner.email,
         ).exists())
 
     def test_social_proof_sections_stay_hidden_until_content_exists(self):

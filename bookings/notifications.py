@@ -171,6 +171,119 @@ def notify_quote_accepted(quote):
         event_key=f"quote:{quote.pk}:accepted:staff",
         action_url=reverse("manage_quote", args=[quote.public_id]),
     )
+    create_notification(
+        kind=Notification.Kind.QUOTE_ACCEPTED,
+        title="Quote accepted",
+        message=f"{quote.customer_name} accepted the {quote.event_date} quote and is moving to payment.",
+        event_key=f"quote:{quote.pk}:accepted:support",
+        email_address=settings.SUPPORT_EMAIL,
+        action_url=reverse("manage_quote", args=[quote.public_id]),
+        send_email=True,
+        email_subject=f"Quote accepted by {quote.customer_name}",
+    )
+
+
+def notify_quote_declined(quote):
+    create_notification(
+        kind=Notification.Kind.QUOTE_DECLINED,
+        title="Your quote was declined",
+        message=f"We recorded your decision to decline the Akako House quote for {quote.event_date}. No payment will be taken.",
+        event_key=f"quote:{quote.pk}:declined:customer",
+        recipient=quote_customer_user(quote),
+        email_address=quote.email,
+        action_url=reverse("quote_review", args=[quote.public_id]),
+        send_email=True,
+        email_subject="Your Akako House quote decision",
+    )
+    notify_staff(
+        kind=Notification.Kind.QUOTE_DECLINED,
+        title="Quote declined",
+        message=f"{quote.customer_name} declined the {quote.event_date} quote.",
+        event_key=f"quote:{quote.pk}:declined:staff",
+        action_url=reverse("manage_quote", args=[quote.public_id]),
+    )
+    create_notification(
+        kind=Notification.Kind.QUOTE_DECLINED,
+        title="Quote declined",
+        message=f"{quote.customer_name} declined the {quote.event_date} quote.",
+        event_key=f"quote:{quote.pk}:declined:support",
+        email_address=settings.SUPPORT_EMAIL,
+        action_url=reverse("manage_quote", args=[quote.public_id]),
+        send_email=True,
+        email_subject=f"Quote declined by {quote.customer_name}",
+    )
+
+
+def notify_capacity_hold_created(hold, *, confirmed_by_staff=False):
+    quote, partner = hold.quote, hold.partner
+    confirmation_source = "Akako House staff confirmed this with you" if confirmed_by_staff else "You accepted the availability request"
+    message = (
+        f"{confirmation_source}, so the ceremony time below is now temporarily reserved for you.\n\n"
+        f"Date/time: {quote.event_date} {quote.event_time or ''}\n"
+        f"Location: {quote.location}\nGuests: {quote.guest_count}\n"
+        f"Reservation expires: {hold.expires_at}\n\n"
+        "This is not yet a confirmed assignment. The customer must accept the quote. "
+        "Please avoid accepting conflicting work during this temporary hold."
+    )
+    create_notification(
+        kind=Notification.Kind.CAPACITY_HOLD_CREATED,
+        title="Ceremony time temporarily reserved",
+        message=message,
+        event_key=f"capacity-hold:{hold.pk}:created",
+        recipient=partner.user,
+        email_address=partner.email,
+        action_url=reverse("partner_dashboard"),
+        send_email=True,
+        email_subject=f"Temporary Akako House reservation — {quote.event_date}",
+    )
+
+
+def notify_capacity_hold_released(hold):
+    quote, partner = hold.quote, hold.partner
+    state = "expired" if hold.status == hold.Status.EXPIRED else "released"
+    message = (
+        f"The temporary reservation for {quote.event_date} at {quote.location} has been {state}. "
+        f"Reason: {hold.release_reason or 'The reservation is no longer required.'} "
+        "You are no longer expected to keep this time reserved."
+    )
+    create_notification(
+        kind=Notification.Kind.CAPACITY_HOLD_RELEASED,
+        title=f"Temporary reservation {state}",
+        message=message,
+        event_key=f"capacity-hold:{hold.pk}:{state}",
+        recipient=partner.user,
+        email_address=partner.email,
+        action_url=reverse("partner_dashboard"),
+        send_email=True,
+        email_subject=f"Akako House temporary reservation {state} — {quote.event_date}",
+    )
+
+
+def notify_ceremony_completed(ceremony):
+    quote, partner = ceremony.quote, ceremony.assigned_partner
+    create_notification(
+        kind=Notification.Kind.CEREMONY_COMPLETED,
+        title="Thank you for gathering with Akako House",
+        message=f"Your ceremony on {quote.event_date} has been marked complete. Thank you for welcoming Akako House to your gathering.",
+        event_key=f"ceremony:{ceremony.pk}:completed:customer",
+        recipient=quote_customer_user(quote),
+        email_address=quote.email,
+        action_url=reverse("customer_quote_detail", args=[quote.public_id]) if quote.customer_id else reverse("quote_review", args=[quote.public_id]),
+        send_email=True,
+        email_subject="Thank you for gathering with Akako House",
+    )
+    if partner:
+        create_notification(
+            kind=Notification.Kind.CEREMONY_COMPLETED,
+            title="Ceremony delivery recorded",
+            message=f"The {quote.event_date} ceremony has been marked delivered. Your payout is now pending staff processing.",
+            event_key=f"ceremony:{ceremony.pk}:completed:partner:{partner.pk}",
+            recipient=partner.user,
+            email_address=partner.email,
+            action_url=reverse("partner_dashboard"),
+            send_email=True,
+            email_subject=f"Akako House ceremony completed — {quote.event_date}",
+        )
 
 
 def notify_payment_received(ceremony, description, amount):

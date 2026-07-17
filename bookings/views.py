@@ -75,8 +75,10 @@ from .notifications import (
     notify_partner_accepted,
     notify_payment_received,
     notify_quote_accepted,
+    notify_quote_declined,
     notify_quote_expired,
     notify_quote_submitted,
+    notify_ceremony_completed,
     notify_staff,
 )
 from .services import (
@@ -911,6 +913,7 @@ def quote_decision(request, public_id, decision):
     elif decision == "decline":
         quote_request.decline_quote()
         release_quote_holds(quote_request, "Customer declined the quote.")
+        notify_quote_declined(quote_request)
         messages.info(request, "Quote declined. Thank you for considering Akako House.")
     else:
         return HttpResponseBadRequest("Unknown quote decision.")
@@ -1916,6 +1919,7 @@ def complete_job(request, public_id):
             if payout.status == PartnerPayout.Status.NOT_READY:
                 payout.status = PartnerPayout.Status.PENDING
                 payout.save(update_fields=["status", "updated_at"])
+        notify_ceremony_completed(ceremony)
         messages.success(request, "Ceremony marked completed. The record is now frozen.")
         return redirect("ceremonies")
     return redirect("ceremony_detail", public_id=ceremony.public_id)
