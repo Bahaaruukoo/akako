@@ -22,8 +22,8 @@ class Command(BaseCommand):
             findings.append("PUBLIC_BASE_URL still points to local development.")
         if settings.PAYMENT_PROVIDER == "manual":
             findings.append("Online payment checkout is disabled (PAYMENT_PROVIDER=manual).")
-        storage_backend = settings.STORAGES["default"]["BACKEND"]
-        if storage_backend == "django.core.files.storage.FileSystemStorage":
+        private_storage_backend = settings.STORAGES["private_documents"]["BACKEND"]
+        if private_storage_backend == "django.core.files.storage.FileSystemStorage":
             findings.append("Partner documents still use local filesystem storage; configure private hosted storage.")
         if not settings.SECURE_SSL_REDIRECT or not settings.SESSION_COOKIE_SECURE or not settings.CSRF_COOKIE_SECURE:
             findings.append("HTTPS redirect and secure session/CSRF cookies are not fully enabled.")

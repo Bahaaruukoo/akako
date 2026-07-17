@@ -173,7 +173,7 @@ For a hosted production database, use the provider's managed backup and point-in
 
 Set `DEBUG=False`, use a long unique `SECRET_KEY`, configure HTTPS, and enable the secure cookie/HSTS settings documented in `.env.example`. Test HSTS on a staging domain before enabling preload.
 
-Run `python manage.py check_production_readiness --strict` in deployment checks. The project supports a configurable `PRIVATE_FILE_STORAGE_BACKEND`; production must install and configure a private hosted backend rather than exposing uploaded partner documents through a public media URL. OAuth remains disabled.
+Run `python manage.py check_production_readiness --strict` in deployment checks. The project supports S3-compatible object storage with separate public-media and private-document policies; production must enable it rather than relying on the app container's local filesystem. OAuth remains disabled.
 
 ## Tests
 

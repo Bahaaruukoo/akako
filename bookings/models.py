@@ -8,6 +8,8 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
+from .storage import private_document_storage, public_media_storage
+
 
 class Partner(models.Model):
     class PartnerType(models.TextChoices):
@@ -93,7 +95,10 @@ class PartnerDocument(models.Model):
 
     partner = models.ForeignKey(Partner, on_delete=models.CASCADE, related_name="documents")
     document_type = models.CharField(max_length=24, choices=DocumentType.choices)
-    file = models.FileField(upload_to="partner_documents/%Y/%m/")
+    file = models.FileField(
+        upload_to="partner_documents/%Y/%m/",
+        storage=private_document_storage,
+    )
     review_status = models.CharField(
         max_length=16,
         choices=ReviewStatus.choices,
@@ -117,7 +122,10 @@ class PartnerDocument(models.Model):
 
 class ClientOrganization(models.Model):
     name = models.CharField(max_length=160)
-    logo = models.FileField(upload_to="content/client_logos/%Y/%m/")
+    logo = models.FileField(
+        upload_to="content/client_logos/%Y/%m/",
+        storage=public_media_storage,
+    )
     alt_text = models.CharField(max_length=180, blank=True)
     website = models.URLField(blank=True)
     display_order = models.PositiveIntegerField(default=0)
@@ -167,7 +175,10 @@ class EventPhoto(models.Model):
         ABOUT_ORIGIN = "about_origin", "About page — land of origins"
         ABOUT_CEREMONY = "about_ceremony", "About page — ceremony and hospitality"
 
-    image = models.FileField(upload_to="content/event_photos/%Y/%m/")
+    image = models.FileField(
+        upload_to="content/event_photos/%Y/%m/",
+        storage=public_media_storage,
+    )
     alt_text = models.CharField(max_length=220)
     caption = models.CharField(max_length=240, blank=True)
     category = models.CharField(max_length=20, choices=Category.choices, default=Category.CEREMONY)
@@ -198,7 +209,10 @@ class PartnerGalleryPhoto(models.Model):
         REJECTED = "rejected", "Rejected"
 
     partner = models.ForeignKey(Partner, on_delete=models.CASCADE, related_name="gallery_photos")
-    image = models.FileField(upload_to="partner_gallery/%Y/%m/")
+    image = models.FileField(
+        upload_to="partner_gallery/%Y/%m/",
+        storage=public_media_storage,
+    )
     alt_text = models.CharField(max_length=220)
     caption = models.CharField(max_length=240, blank=True)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)

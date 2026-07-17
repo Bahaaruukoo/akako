@@ -156,18 +156,32 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / 'static']
 MEDIA_ROOT = BASE_DIR / "media"
 MEDIA_URL = "media/"
+OBJECT_STORAGE_ENABLED = env.bool("OBJECT_STORAGE_ENABLED", default=False)
+OBJECT_STORAGE_BUCKET_NAME = env("OBJECT_STORAGE_BUCKET_NAME", default="")
+OBJECT_STORAGE_REGION = env("OBJECT_STORAGE_REGION", default="")
+OBJECT_STORAGE_ENDPOINT_URL = env("OBJECT_STORAGE_ENDPOINT_URL", default="")
+OBJECT_STORAGE_CDN_DOMAIN = env("OBJECT_STORAGE_CDN_DOMAIN", default="")
+OBJECT_STORAGE_ACCESS_KEY_ID = env("OBJECT_STORAGE_ACCESS_KEY_ID", default="")
+OBJECT_STORAGE_SECRET_ACCESS_KEY = env("OBJECT_STORAGE_SECRET_ACCESS_KEY", default="")
+
 STORAGES = {
-    "default": {
-        "BACKEND": env(
-            "PRIVATE_FILE_STORAGE_BACKEND",
-            default="django.core.files.storage.FileSystemStorage",
-        ),
-        "OPTIONS": env.json("PRIVATE_FILE_STORAGE_OPTIONS", default={}),
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "public_media": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {"location": MEDIA_ROOT, "base_url": MEDIA_URL},
+    },
+    "private_documents": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {"location": MEDIA_ROOT, "base_url": MEDIA_URL},
     },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+if OBJECT_STORAGE_ENABLED:
+    STORAGES["default"] = {"BACKEND": "bookings.storage.PublicMediaStorage"}
+    STORAGES["public_media"] = {"BACKEND": "bookings.storage.PublicMediaStorage"}
+    STORAGES["private_documents"] = {"BACKEND": "bookings.storage.PrivateDocumentStorage"}
 
 LOGIN_URL = "partner_login"
 LOGIN_REDIRECT_URL = "partner_dashboard"
