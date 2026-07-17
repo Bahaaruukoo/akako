@@ -2,6 +2,26 @@
 {% load static %}
 
 {% block title %}Akako House | Ethiopian Coffee Ceremony Experiences{% endblock %}
+{% block meta_description %}Plan an authentic Ethiopian coffee ceremony for weddings, workplaces, universities, and private gatherings with Akako House.{% endblock %}
+{% block extra_head %}
+<link rel="preload" as="image" href="{% static 'images/ceremony-background-kolo.webp' %}" type="image/webp">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Service",
+  "name": "Akako House Ethiopian Coffee Ceremony",
+  "description": "Authentic Ethiopian coffee ceremony experiences for private, workplace, university, wedding, and cultural gatherings.",
+  "areaServed": "{{ service_area_display|escapejs }}",
+  "provider": {
+    "@type": "Organization",
+    "name": "Akako House",
+    "url": "{{ site_url }}",
+    "email": "{{ support_email|escapejs }}"
+  },
+  "url": "{{ site_url }}"
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <main class="bunago-page">
@@ -24,7 +44,7 @@
       {% endif %}
     </nav>
     <div class="header-access-actions">
-      <a class="nav-quote-button" href="#request">Check Availability</a>
+      <a class="nav-quote-button" href="#request" data-conversion="header_check_availability">Check Availability</a>
       {% if request.user.is_authenticated %}
         <details class="account-dropdown">
           <summary><span>{{ request.user.email }}</span><i aria-hidden="true"></i></summary>
@@ -55,7 +75,7 @@
         <a href="#services">Services</a>
         <a href="#partners">Partners</a>
         <a href="{% url 'shop' %}">Shop</a>
-        <a class="mobile-nav-primary" href="#request">Check Availability</a>
+        <a class="mobile-nav-primary" href="#request" data-conversion="mobile_menu_check_availability">Check Availability</a>
         {% if request.user.is_staff %}
           <a href="{% url 'operations_dashboard' %}">Staff Dashboard</a>
         {% elif request.user.partner_profile %}
@@ -78,15 +98,16 @@
       <p class="hero-kicker">Ethiopian hospitality, brought to your gathering</p>
       <h1><span>Where Coffee Becomes</span><span>Conversation</span></h1>
       <p>Share an unforgettable Ethiopian tradition with your guests. Our Cultural Ambassadors bring an authentic coffee ceremony directly to weddings, workplaces, universities, and private celebrations.</p>
+      <p class="hero-service-area"><span aria-hidden="true">●</span>{{ service_area_display }}</p>
       <div class="hero-actions">
-        <div><a class="button primary" href="#request"><span class="calendar-icon" aria-hidden="true"></span>Plan Your Ceremony</a></div>
-        <div><a class="button partner-button" href="#services">Discover the Experience</a></div>
+        <div><a class="button primary" href="#request" data-conversion="hero_plan_ceremony"><span class="calendar-icon" aria-hidden="true"></span>Plan Your Ceremony</a></div>
+        <div><a class="button partner-button" href="#services" data-conversion="hero_discover_experience">Discover the Experience</a></div>
       </div>
-      {% if not request.user.is_authenticated %}<p class="customer-account-prompt">Returning customer? <a href="{% url 'customer_registration' %}">Create an account</a> to track quotes, payments, and ceremonies.</p>{% endif %}
+      {% if not request.user.is_authenticated %}<p class="customer-account-prompt">New customer? <a href="{% url 'customer_registration' %}" data-conversion="hero_create_account">Create an account</a> to track quotes, payments, and ceremonies. Returning customer? <a href="{% url 'partner_login' %}">Sign in</a>.</p>{% endif %}
     </div>
 
     <div class="hero-photo" aria-hidden="true">
-      <img src="{% static 'images/ceremony-background-kolo.png' %}" alt="">
+      <img src="{% static 'images/ceremony-background-kolo.webp' %}" alt="" width="1536" height="1024" fetchpriority="high">
     </div>
 
     <aside class="bunago-quote-card" id="request" aria-labelledby="quote-title">
@@ -103,37 +124,27 @@
         </div>
       {% endif %}
 
-      <form method="post" class="bunago-form">
+      <form method="post" class="bunago-form" data-conversion="quote_form_submit">
         {% csrf_token %}
         <label>
           <span>Event Date</span>
           {{ form.event_date }}
-          {% if form.event_date.errors %}<strong>{{ form.event_date.errors|striptags }}</strong>{% endif %}
+          {% if form.event_date.errors %}<strong role="alert">{{ form.event_date.errors|striptags }}</strong>{% endif %}
         </label>
         <label>
           <span>City or ZIP</span>
           {{ form.location }}
-          {% if form.location.errors %}<strong>{{ form.location.errors|striptags }}</strong>{% endif %}
+          {% if form.location.errors %}<strong role="alert">{{ form.location.errors|striptags }}</strong>{% endif %}
         </label>
         <label>
           <span>Guest Count</span>
           {{ form.guest_count }}
-          {% if form.guest_count.errors %}<strong>{{ form.guest_count.errors|striptags }}</strong>{% endif %}
+          {% if form.guest_count.errors %}<strong role="alert">{{ form.guest_count.errors|striptags }}</strong>{% endif %}
         </label>
         <label>
           <span>Event Type</span>
           {{ form.event_type }}
-          {% if form.event_type.errors %}<strong>{{ form.event_type.errors|striptags }}</strong>{% endif %}
-        </label>
-        <label>
-          <span>Milk Option</span>
-          {{ form.milk_preference }}
-          {% if form.milk_preference.errors %}<strong>{{ form.milk_preference.errors|striptags }}</strong>{% endif %}
-        </label>
-        <label>
-          <span>Snack Style</span>
-          {{ form.snack_style }}
-          {% if form.snack_style.errors %}<strong>{{ form.snack_style.errors|striptags }}</strong>{% endif %}
+          {% if form.event_type.errors %}<strong role="alert">{{ form.event_type.errors|striptags }}</strong>{% endif %}
         </label>
         <button class="button primary full" type="submit">Request My Custom Quote</button>
         <p class="response-note"><span aria-hidden="true">♢</span>Most requests receive a response within 1 business day.</p>
@@ -232,6 +243,7 @@
       </details>
     </div>
   </section>
-  <section class="homepage-final-invitation"><p class="eyebrow">Your gathering</p><h2>Bring the ceremony to your table.</h2><p>Tell us about the occasion and we will help you plan an experience rooted in hospitality, conversation, and tradition.</p><a class="button primary" href="#request">Check Availability</a></section>
+  <section class="homepage-final-invitation"><p class="eyebrow">Your gathering</p><h2>Bring the ceremony to your table.</h2><p>Tell us about the occasion and we will help you plan an experience rooted in hospitality, conversation, and tradition.</p><a class="button primary" href="#request" data-conversion="final_check_availability">Check Availability</a></section>
+  <a class="mobile-sticky-cta" href="#request" data-conversion="mobile_sticky_check_availability">Check Availability</a>
 </main>
 {% endblock %}

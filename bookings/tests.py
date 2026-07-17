@@ -247,8 +247,9 @@ class BookingFlowTests(TestCase):
         self.assertContains(response, "Where coffee returns to its roots")
         self.assertContains(response, "<strong>Jebena</strong>", html=True)
         self.assertContains(response, "Coffee is never simply served")
-        self.assertContains(response, "images/akako-coffee-cup.png")
-        self.assertContains(response, "images/akako-coffee-pouring.jpg")
+        self.assertContains(response, "images/akako-coffee-cup.")
+        self.assertContains(response, ".webp")
+        self.assertContains(response, "images/akako-coffee-pouring.")
 
     def test_notification_center_is_private_and_marks_notifications_read(self):
         notice = Notification.objects.create(
@@ -306,7 +307,10 @@ class BookingFlowTests(TestCase):
         response = self.client.get(reverse("about"))
 
         self.assertContains(response, ceremony_photo.image.url)
-        self.assertNotContains(response, "images/akako-coffee-pouring.jpg")
+        self.assertNotContains(
+            response,
+            "A cultural ambassador pouring Ethiopian coffee from a Jebena for a guest",
+        )
 
     def test_signed_out_homepage_has_partner_login_button(self):
         self.client.logout()

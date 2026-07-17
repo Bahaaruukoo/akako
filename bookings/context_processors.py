@@ -39,4 +39,7 @@ def site_contact_details(request):
         "support_email": settings.SUPPORT_EMAIL,
         "support_hours": settings.SUPPORT_HOURS,
         "support_urgent_message": settings.SUPPORT_URGENT_MESSAGE,
+        "service_area_display": settings.SERVICE_AREA_DISPLAY,
+        "site_url": settings.PUBLIC_BASE_URL.rstrip("/"),
+        "analytics_id": settings.GOOGLE_ANALYTICS_ID,
     }

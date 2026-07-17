@@ -5,16 +5,86 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Buna Ceremony{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Akako House brings authentic Ethiopian coffee ceremony experiences to gatherings across the Washington, DC metropolitan area.{% endblock %}">
+  <link rel="canonical" href="{{ site_url }}{{ request.path }}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Akako House">
+  <meta property="og:title" content="{% block og_title %}Akako House | Ethiopian Coffee Ceremony Experiences{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}Bring Ethiopian hospitality, conversation, and tradition to your gathering with an Akako House coffee ceremony.{% endblock %}">
+  <meta property="og:url" content="{{ site_url }}{{ request.path }}">
+  <meta property="og:image" content="{{ site_url }}{% static 'images/akako-coffee-pouring.jpg' %}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#34752f">
+  <link rel="icon" href="{% static 'images/bunago-logo-extracted.png' %}">
+  <link rel="apple-touch-icon" href="{% static 'images/bunago-logo-extracted.png' %}">
   <link rel="stylesheet" href="{% static 'css/site.css' %}">
+  {% if analytics_id %}
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ analytics_id|urlencode }}"></script>
+    <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());gtag("config","{{ analytics_id|escapejs }}",{anonymize_ip:true});</script>
+  {% endif %}
+  {% block extra_head %}{% endblock %}
 </head>
 <body>
-  {% block content %}{% endblock %}
+  <a class="skip-link" href="#page-content">Skip to main content</a>
+  <div id="page-content">{% block content %}{% endblock %}</div>
   {% include "bookings/_site_footer.html" %}
   <script>
     document.addEventListener("click", function (event) {
       const action = event.target.closest("[data-confirm]");
       if (action && !window.confirm(action.dataset.confirm)) {
         event.preventDefault();
+      }
+
+      const conversion = event.target.closest("[data-conversion]");
+      const contactLink = event.target.closest("a[href^='tel:'], a[href^='mailto:']");
+      const conversionName = conversion
+        ? conversion.dataset.conversion
+        : contactLink
+          ? (contactLink.href.startsWith("tel:") ? "phone_click" : "email_click")
+          : "";
+      if (conversionName) {
+        const detail = {name: conversionName};
+        window.dispatchEvent(new CustomEvent("akako:conversion", {detail: detail}));
+        if (typeof window.gtag === "function") {
+          window.gtag("event", detail.name, {event_category: "conversion"});
+        }
+      }
+
+      const mobileMenu = document.querySelector(".mobile-home-nav[open]");
+      if (mobileMenu && (!mobileMenu.contains(event.target) || event.target.closest("a"))) {
+        mobileMenu.removeAttribute("open");
+      }
+    });
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") {
+        const mobileMenu = document.querySelector(".mobile-home-nav[open]");
+        if (mobileMenu) {
+          mobileMenu.removeAttribute("open");
+          mobileMenu.querySelector("summary").focus();
+        }
+      }
+    });
+
+    document.addEventListener("submit", function (event) {
+      const conversion = event.target.closest("[data-conversion]");
+      if (conversion) {
+        const detail = {name: conversion.dataset.conversion};
+        window.dispatchEvent(new CustomEvent("akako:conversion", {detail: detail}));
+        if (typeof window.gtag === "function") {
+          window.gtag("event", detail.name, {event_category: "conversion"});
+        }
+      }
+    });
+
+    document.addEventListener("focusin", function (event) {
+      const form = event.target.closest("form[data-conversion='quote_form_submit']");
+      if (form && !form.dataset.started) {
+        form.dataset.started = "true";
+        window.dispatchEvent(new CustomEvent("akako:conversion", {detail: {name: "quote_form_start"}}));
+        if (typeof window.gtag === "function") {
+          window.gtag("event", "quote_form_start", {event_category: "conversion"});
+        }
       }
     });
   </script>

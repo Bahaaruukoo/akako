@@ -181,8 +181,6 @@ class QuoteLeadForm(forms.ModelForm):
             "event_date",
             "location",
             "guest_count",
-            "milk_preference",
-            "snack_style",
         ]
         widgets = {
             "event_date": forms.DateInput(attrs={"type": "date"}),

@@ -55,6 +55,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'config.middleware.CanonicalHostMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -203,6 +204,10 @@ SUPPORT_URGENT_MESSAGE = env(
     "SUPPORT_URGENT_MESSAGE",
     default="For a ceremony happening within 24 hours, contact us as soon as possible.",
 )
+SERVICE_AREA_DISPLAY = env(
+    "SERVICE_AREA_DISPLAY",
+    default="Serving the Washington, DC metropolitan area",
+)
 EMAIL_HOST = env("EMAIL_HOST", default="")
 EMAIL_PORT = env.int("EMAIL_PORT", default=587)
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
@@ -220,6 +225,8 @@ PAYMENT_CURRENCY = env("PAYMENT_CURRENCY", default="usd")
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
 PUBLIC_BASE_URL = env("PUBLIC_BASE_URL", default="http://127.0.0.1:8000")
+CANONICAL_HOST = env("CANONICAL_HOST", default="")
+GOOGLE_ANALYTICS_ID = env("GOOGLE_ANALYTICS_ID", default="")
 PAYMENT_REMINDER_HOURS = env.int("PAYMENT_REMINDER_HOURS", default=48)
 CEREMONY_REMINDER_HOURS = env.int("CEREMONY_REMINDER_HOURS", default=24)
 DOCUMENT_EXPIRY_WARNING_DAYS = env.int("DOCUMENT_EXPIRY_WARNING_DAYS", default=30)

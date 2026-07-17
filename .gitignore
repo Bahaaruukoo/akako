@@ -6,3 +6,6 @@ __pycache__/
 staticfiles/
 backups/
 .DS_Store
+.chrome-mobile-audit-2/
+.chrome-mobile-audit/
+.edge-mobile-audit/
