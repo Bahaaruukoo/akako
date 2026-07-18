@@ -63,14 +63,13 @@
         </div>
       </section>
       <div class="quote-actions">
-        <form method="post" action="{% url 'quote_decision' quote_request.public_id 'accept' %}">
+        <form class="quote-decision-form" method="post" action="{% url 'quote_decision' quote_request.public_id 'accept' %}">
           {% csrf_token %}
           <label class="policy-consent-check"><input type="checkbox" name="policy_consent" required> <span>I have reviewed and agree to the policies listed above. I understand that accepting locks this quote.</span></label>
-          <button class="button primary" type="submit" data-confirm="Accept this quote and continue to payment options? Your policy agreement and quote will be recorded.">Accept Quote</button>
-        </form>
-        <form method="post" action="{% url 'quote_decision' quote_request.public_id 'decline' %}">
-          {% csrf_token %}
-          <button class="button partner-button" type="submit" data-confirm="Decline this quote?">Decline</button>
+          <div class="quote-decision-buttons">
+            <button class="button primary" type="submit" data-confirm="Accept this quote and continue to payment options? Your policy agreement and quote will be recorded.">Accept Quote</button>
+            <button class="button partner-button" type="submit" formaction="{% url 'quote_decision' quote_request.public_id 'decline' %}" formnovalidate data-confirm="Decline this quote?">Decline</button>
+          </div>
         </form>
       </div>
     {% elif quote_request.status == quote_request.Status.ACCEPTED %}

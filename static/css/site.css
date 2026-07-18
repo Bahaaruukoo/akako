@@ -2929,7 +2929,10 @@ mark {
 .policy-link-list a { align-items: center; background: #fff; border: 1px solid #ead9b7; border-radius: 10px; color: #482317; display: flex; justify-content: space-between; padding: 11px 13px; text-decoration: none; }
 .policy-link-list small, .policy-version, .payment-policy-reference small { color: #785f4c; }
 .policy-consent-check { align-items: flex-start; display: flex; gap: 10px; margin-bottom: 14px; text-align: left; }
-.policy-consent-check input { flex: 0 0 auto; margin-top: 4px; }
+.policy-consent-check input { flex: 0 0 auto; height: 20px; margin: 2px 0 0; min-width: 20px; width: 20px; }
+.quote-decision-form { width: 100%; }
+.quote-decision-buttons { display: flex; flex-wrap: wrap; gap: 12px; }
+.quote-decision-buttons .button { min-width: 150px; }
 .accepted-policy-note, .form-policy-note { color: #6e5747; font-size: .9rem; }
 .email-delivery-note { background: #fff5dc; border: 1px solid #e4c27b; border-radius: 10px; color: #65451f; margin: 18px 0; padding: 12px 14px; }
 .form-policy-note { margin: 14px 0 0; text-align: center; }
@@ -2944,6 +2947,8 @@ mark {
 
 @media (max-width: 640px) {
   .policy-link-list a { align-items: flex-start; flex-direction: column; gap: 3px; }
+  .quote-decision-buttons { flex-direction: column; }
+  .quote-decision-buttons .button { width: 100%; }
 }
 .application-badge, .review-banner { border-radius: 10px; padding: 12px 16px; }
 .application-badge { background: #f1e4c8; font-weight: 850; }
