@@ -1228,10 +1228,15 @@ class BookingFlowTests(TestCase):
             quote_request.policy_acceptances.count(),
             PolicyDocument.objects.filter(is_active=True).count(),
         )
+        self.assertFalse(
+            quote_request.policy_acceptances.filter(
+                policy_content__contains="PLACEHOLDER POLICY CONTENT"
+            ).exists()
+        )
         self.assertTrue(
             quote_request.policy_acceptances.filter(
                 accepted_email=quote_request.email,
-                policy_content__contains="PLACEHOLDER POLICY CONTENT",
+                policy_version="2026-07-17",
             ).exists()
         )
         self.assertTrue(hasattr(quote_request, "ceremony"))
