@@ -1234,7 +1234,8 @@ a {
     width: auto;
   }
   .hero-kicker { font-size: .72rem !important; line-height: 1.45; }
-  .hero-left h1 { font-size: clamp(2.35rem, 11.5vw, 3rem); line-height: 1.02; white-space: normal; }
+  .hero-left h1 { font-size: clamp(2rem, 9vw, 2.55rem); line-height: 1.08; max-width: 22rem; white-space: normal; }
+  .hero-left h1 span { display: inline; }
   .hero-left p { font-size: 1.05rem; max-width: none; }
   .hero-actions { justify-items: stretch; }
   .hero-actions > div { width: 100%; }
