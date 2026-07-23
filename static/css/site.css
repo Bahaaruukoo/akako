@@ -1342,11 +1342,12 @@ a {
   }
 
   .hero-photo {
-    height: min(42vh, 240px);
+    height: min(46vh, 280px);
   }
 
   .hero-photo img {
-    object-fit: contain;
+    object-fit: cover;
+    object-position: center center;
   }
 }
 
