@@ -112,7 +112,7 @@ class BookingFlowTests(TestCase):
         response = self.client.get(reverse("home"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Where Coffee Becomes")
+        self.assertContains(response, "Bring Ethiopian Coffee")
         self.assertContains(response, "Plan Your Ceremony")
         self.assertContains(response, reverse("operations_dashboard"))
         self.assertContains(response, reverse("account_home"))
@@ -124,6 +124,8 @@ class BookingFlowTests(TestCase):
         self.assertContains(response, reverse("shop"))
         self.assertNotContains(response, '<a href="#faq">FAQ</a>', html=True)
         self.assertContains(response, f'{reverse("home")}#faq')
+        self.assertNotContains(response, 'href="#partners"')
+        self.assertNotContains(response, "trusted local partner network")
 
     def test_shop_signup_collects_and_updates_launch_interest(self):
         response = self.client.get(reverse("shop"))
@@ -1236,7 +1238,7 @@ class BookingFlowTests(TestCase):
         self.assertTrue(
             quote_request.policy_acceptances.filter(
                 accepted_email=quote_request.email,
-                policy_version="2026-07-17",
+                policy_version="2026-07-23",
             ).exists()
         )
         self.assertTrue(hasattr(quote_request, "ceremony"))

@@ -110,7 +110,7 @@ def notify_quote_submitted(quote):
         f"Time: {event_time}\n"
         f"Location: {quote.location}\n"
         f"Guests: {quote.guest_count}\n\n"
-        "Next steps: our team will review the request, confirm ceremony-partner availability, "
+        "Next steps: our team will review the request, confirm ceremony-team availability, "
         "and email you a custom quote. No payment is due until you review and accept that quote.\n\n"
         "If you do not see future messages from us, please check your spam or junk folder."
     )
@@ -324,7 +324,7 @@ def notify_assignment(ceremony):
     create_notification(
         kind=Notification.Kind.PARTNER_ASSIGNED,
         title="Your Cultural Ambassador is assigned",
-        message=f"{partner.name} is assigned to your {quote.event_date} ceremony.",
+        message=f"Your Akako House Cultural Ambassador is assigned to your {quote.event_date} ceremony.",
         event_key=f"ceremony:{ceremony.pk}:partner:{partner.pk}:assigned:customer",
         recipient=quote_customer_user(quote),
         email_address=quote.email,
@@ -345,7 +345,7 @@ def notify_partner_accepted(task):
     create_notification(
         kind=Notification.Kind.PARTNER_ACCEPTED,
         title="Your ambassador confirmed",
-        message=f"{task.partner.name} confirmed your ceremony assignment for {quote.event_date}.",
+        message=f"Your Akako House Cultural Ambassador confirmed your ceremony for {quote.event_date}.",
         event_key=f"task:{task.pk}:accepted:customer",
         recipient=quote_customer_user(quote),
         email_address=quote.email,

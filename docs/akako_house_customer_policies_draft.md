@@ -14,7 +14,7 @@ These policies are designed to accompany each Akako House custom quote. The quot
 
 ## 1. About the service
 
-Akako House provides hosted Ethiopian coffee ceremony experiences for private gatherings, weddings, workplaces, universities, cultural programs, and related events. The ceremony is the core service. It is delivered by Akako House personnel or a trained Cultural Ambassador from our approved local partner network under Akako House coordination.
+Akako House provides hosted Ethiopian coffee ceremony experiences for private gatherings, weddings, workplaces, universities, cultural programs, and related events. The ceremony is the core service. It may be fulfilled by qualified personnel or independent service providers operating under Akako House coordination and service standards.
 
 Our goal is to provide a warm, organized, culturally respectful experience while meeting reasonable venue, safety, accessibility, and guest needs. Cultural practices vary by household, region, and occasion. Our ambassadors use approved explanations and do not represent that one presentation is the only expression of Ethiopian coffee culture.
 
@@ -53,7 +53,7 @@ Akako House uses only heat sources and preparation methods allowed by the venue 
 
 Akako House may substitute an electric, reduced-smoke, or no-heat presentation method when required by venue rules, weather, safety, law, equipment condition, or the event risk assessment. A safety-based substitution that reasonably preserves the ceremony experience is not a failure to perform.
 
-Akako House may pause, modify, relocate, or stop service if conditions present an unreasonable risk to guests, staff, partners, property, or cultural integrity. This includes unsafe crowding, interference with the hot zone, severe weather, harassment, illegal activity, or instructions that conflict with venue or safety requirements.
+Akako House may pause, modify, relocate, or stop service if conditions present an unreasonable risk to guests, Cultural Ambassadors, staff, property, or cultural integrity. This includes unsafe crowding, interference with the hot zone, severe weather, harassment, illegal activity, or instructions that conflict with venue or safety requirements.
 
 ## 6. Food, beverage, and allergens
 
@@ -63,7 +63,7 @@ Because services may occur in shared venues and use products prepared or package
 
 ## 7. Cultural Ambassador assignment
 
-A temporary partner reservation is not a confirmed assignment. Akako House confirms the assignment as the booking progresses through quote acceptance and required payment steps.
+A temporary service reservation is not a confirmed Cultural Ambassador assignment. Akako House confirms the assignment as the booking progresses through quote acceptance and required payment steps.
 
 The named or anticipated ambassador may become unavailable because of illness, emergency, compliance status, travel disruption, or another circumstance outside reasonable control. Akako House may assign a comparably qualified replacement. We will inform the customer of a material substitution. If we cannot provide a suitable replacement, the customer may choose a reasonable reschedule or receive a refund of amounts paid for services not provided.
 
@@ -89,7 +89,7 @@ Guests may photograph for personal purposes when permitted by the host and venue
 
 Questions or concerns should be sent to support@akakohouse.com as soon as practicable. For an issue during the event, notify the Field Lead or Cultural Ambassador promptly so immediate needs can be addressed.
 
-Akako House will review the event record, customer information, partner account, and other available evidence. Remedies may include correction, follow-up, credit, partial refund, rescheduling, or another proportionate response. Only an authorized Akako House representative may promise a financial remedy.
+Akako House will review the event record, customer information, Cultural Ambassador assignment records, and other available evidence. Remedies may include correction, follow-up, credit, partial refund, rescheduling, or another proportionate response. Only an authorized Akako House representative may promise a financial remedy.
 
 ## 12. Disruption and force majeure
 
@@ -121,7 +121,7 @@ Quote acceptance creates a booking subject to the deposit deadline and continued
 
 ## 3. Deposit
 
-When a deposit is required, it is due within 48 hours after quote acceptance unless the quote provides a different deadline. The deposit reserves operational capacity and supports planning, partner coordination, and committed event costs.
+When a deposit is required, it is due within 48 hours after quote acceptance unless the quote provides a different deadline. The deposit reserves operational capacity and supports planning, service coordination, and committed event costs.
 
 If the deposit is not received by the deadline, Akako House may cancel the booking, release the reserved ambassador or date, and require a new quote. Payment is effective when the payment provider confirms successful collection, not when a customer merely begins checkout.
 
@@ -135,7 +135,7 @@ If the final balance is not received by the deadline, the booking may be marked 
 
 Payments must be made through the approved payment options shown by Akako House. Online payments may be processed by a third-party payment provider. Akako House does not store complete payment-card numbers in its booking system.
 
-Exceptional onsite cash payment requires advance authorization and an Akako House receipt. Customers should not give company payments to an individual partner or employee without an authorized receipt process.
+Exceptional onsite cash payment requires advance authorization and an Akako House receipt. Customers should not give company payments to a Cultural Ambassador or staff member without an authorized receipt process.
 
 ## 6. Failed payments, disputes, and chargebacks
 
@@ -151,7 +151,7 @@ Akako House will seek written approval before incurring a material optional char
 
 ## 8. Gratuities
 
-Gratuities are optional. Akako House personnel and partners may not pressure customers or guests for gratuities. Any gratuity processed through Akako House is handled under the company's written compensation practices.
+Gratuities are optional. Akako House Cultural Ambassadors and personnel may not pressure customers or guests for gratuities. Any gratuity processed through Akako House is handled under the company's written compensation practices.
 
 ## 9. Receipts and refunds
 
@@ -192,7 +192,7 @@ Rescheduling is subject to date, ambassador, venue, and operational availability
 - A request received at least 7 calendar days before the ceremony may transfer amounts paid to one replacement date without a separate rescheduling fee. The customer remains responsible for any price difference.
 - A request received fewer than 7 calendar days before the ceremony is normally treated under the cancellation schedule unless Akako House approves an exception for safety, emergency, or another documented circumstance.
 
-Unless otherwise approved in writing, a rescheduled event must occur within 12 months of the original event date. A second rescheduling request may be treated as a cancellation. Pricing, service area, partner availability, and policy versions in effect for the replacement date may apply.
+Unless otherwise approved in writing, a rescheduled event must occur within 12 months of the original event date. A second rescheduling request may be treated as a cancellation. Pricing, service area, service availability, and policy versions in effect for the replacement date may apply.
 
 ## 4. Weather, emergency, illness, and venue disruption
 
@@ -226,9 +226,9 @@ Customers are encouraged to contact support@akakohouse.com before initiating a c
 
 ## 1. Scope
 
-This Privacy Notice explains how Akako House collects, uses, shares, protects, and retains personal information through akakohouse.com, customer and partner accounts, quote and ceremony services, communications, payments, reviews, media submissions, and related operations.
+This Privacy Notice explains how Akako House collects, uses, shares, protects, and retains personal information through akakohouse.com, customer accounts, service-provider workspaces, quote and ceremony services, communications, payments, reviews, media submissions, and related operations.
 
-This notice applies to customers, prospective customers, website visitors, event contacts, and guests who communicate directly with Akako House. Separate workforce and partner notices may apply to employment, contractor, compliance, payout, identity, permit, insurance, and training records.
+This notice applies to customers, prospective customers, website visitors, event contacts, and guests who communicate directly with Akako House. Separate workforce and service-provider notices may apply to employment, contractor, compliance, payout, identity, permit, insurance, and training records.
 
 ## 2. Information we collect
 
@@ -240,7 +240,7 @@ Depending on the interaction, Akako House may collect:
 - **Account and authentication information:** password hashes, email-verification status, login and security records. Akako House does not have access to a user's readable account password.
 - **Payment and transaction information:** payment status, amount, dates, processor references, receipts, refunds, disputes, and billing-related records. Complete payment-card information is handled by the payment provider and is not stored in the Akako House booking database.
 - **Policy and contract records:** accepted policy titles, versions and text, acceptance date and time, customer identity, and available IP-address information.
-- **Service and operational records:** partner availability, assignments, attendance, incident, complaint, cancellation, service-recovery, outcome, and ceremony-history records.
+- **Service and operational records:** service availability, assignments, attendance, incident, complaint, cancellation, service-recovery, outcome, and ceremony-history records.
 - **Content and feedback:** reviews, ratings, testimonials, photographs, videos, captions, consent records, and related moderation information when submitted or authorized.
 - **Technical and analytics information:** IP address, browser or device information, pages or interactions, referral information, security logs, cookies, and analytics identifiers when those tools are enabled.
 
@@ -249,8 +249,8 @@ Depending on the interaction, Akako House may collect:
 Akako House uses personal information to:
 
 - respond to inquiries and prepare custom quotes;
-- evaluate service area, scheduling, partner capacity, venue and safety feasibility;
-- create and administer customer or partner accounts;
+- evaluate service area, scheduling, service capacity, venue and safety feasibility;
+- create and administer customer or service-provider accounts;
 - coordinate ceremonies, accommodations, access, assignments, payments, cancellations, and support;
 - communicate confirmations, quotes, availability requests, payment notices, reminders, policy records, and operational updates;
 - process payments, refunds, receipts, disputes, payouts, accounting, and tax records;
@@ -266,7 +266,7 @@ Akako House does not sell personal information for money and does not use allerg
 
 Akako House may share information only as reasonably necessary with:
 
-- **Assigned Cultural Ambassadors and operational partners,** who receive event, contact, access, safety, and service information necessary to evaluate availability or deliver the ceremony.
+- **Authorized Cultural Ambassadors and service providers,** who receive event, contact, access, safety, and service information necessary to evaluate availability or deliver the ceremony.
 - **Hosting and storage providers,** including DigitalOcean infrastructure and object storage used to operate the website and retain authorized files.
 - **Email providers,** including Zoho, used to send and receive account and service communications.
 - **Payment providers,** including Stripe when enabled, used to process payments, refunds, and disputes.
