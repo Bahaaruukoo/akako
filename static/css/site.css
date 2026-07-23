@@ -2919,7 +2919,7 @@ mark {
 .quote-next-step { background: #fff2d8; border-left: 4px solid #d9961a; color: #593820; margin: 14px 0 0; padding: 10px 12px; }
 .quote-next-step a { color: #27733d; font-weight: 800; }
 
-@media (max-width: 640px) {
+@media (max-width: 720px) {
   .quote-queue-alert { align-items: flex-start; flex-direction: column; gap: 3px; }
 }
 
