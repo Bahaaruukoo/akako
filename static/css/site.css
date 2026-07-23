@@ -1152,7 +1152,7 @@ a {
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 720px), (max-width: 980px) and (max-height: 560px) and (orientation: landscape) {
   body { padding-bottom: 68px; }
   .bunago-header {
     gap: 12px;
@@ -1227,7 +1227,7 @@ a {
 
   .hero-left {
     left: auto;
-    order: 1;
+    order: 2;
     padding: 0;
     position: relative;
     top: auto;
@@ -1245,8 +1245,8 @@ a {
     display: block;
     height: 240px;
     left: auto;
-    margin: 28px -20px 0;
-    order: 2;
+    margin: 0 -20px 24px;
+    order: 1;
     position: relative;
     right: auto;
     top: auto;
@@ -1327,6 +1327,16 @@ a {
 
   .bunago-process li:not(:last-child)::after {
     display: none;
+  }
+}
+
+@media (max-width: 980px) and (max-height: 560px) and (orientation: landscape) {
+  .bunago-hero {
+    padding-top: 18px;
+  }
+
+  .hero-photo {
+    height: min(38vh, 220px);
   }
 }
 
