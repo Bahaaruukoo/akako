@@ -1241,6 +1241,14 @@ class BookingFlowTests(TestCase):
                 policy_version="2026-07-23",
             ).exists()
         )
+        service_acceptance = quote_request.policy_acceptances.get(
+            policy__policy_type=PolicyDocument.PolicyType.SERVICE
+        )
+        self.assertEqual(service_acceptance.policy_version, "2026-07-24")
+        self.assertIn("electric stove", service_acceptance.policy_content)
+        self.assertIn("frankincense", service_acceptance.policy_content)
+        self.assertIn("smoke detector", service_acceptance.policy_content)
+        self.assertIn("sprinkler", service_acceptance.policy_content)
         self.assertTrue(hasattr(quote_request, "ceremony"))
         self.assertEqual(quote_request.ceremony.status, Ceremony.Status.AWAITING_DEPOSIT)
         self.assertEqual(quote_request.ceremony.payments.count(), 2)
