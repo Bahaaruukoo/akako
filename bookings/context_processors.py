@@ -53,6 +53,13 @@ def staff_partner_alerts(request):
 
 
 def site_contact_details(request):
+    resolver_match = getattr(request, "resolver_match", None)
+    public_search_pages = {"home", "about", "shop", "contact"}
+    robots_directive = (
+        "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+        if resolver_match and resolver_match.url_name in public_search_pages
+        else "noindex, nofollow"
+    )
     return {
         "support_phone_display": settings.SUPPORT_PHONE_DISPLAY,
         "support_phone_tel": settings.SUPPORT_PHONE_TEL,
@@ -62,4 +69,5 @@ def site_contact_details(request):
         "service_area_display": settings.SERVICE_AREA_DISPLAY,
         "site_url": settings.PUBLIC_BASE_URL.rstrip("/"),
         "analytics_id": settings.GOOGLE_ANALYTICS_ID,
+        "robots_directive": robots_directive,
     }

@@ -197,6 +197,16 @@ def contact(request):
     return render(request, "bookings/contact.html")
 
 
+def robots_txt(request):
+    sitemap_url = f"{settings.PUBLIC_BASE_URL.rstrip('/')}/sitemap.xml"
+    lines = [
+        "User-agent: *", "Allow: /", "Disallow: /admin/", "Disallow: /accounts/",
+        "Disallow: /account/", "Disallow: /customer/", "Disallow: /partner/",
+        "Disallow: /operations/", f"Sitemap: {sitemap_url}",
+    ]
+    return HttpResponse("\n".join(lines) + "\n", content_type="text/plain")
+
+
 def about(request):
     approved_photos = EventPhoto.objects.filter(
         active=True,

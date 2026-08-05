@@ -1,8 +1,12 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Akako House | Ethiopian Coffee Ceremony Experiences{% endblock %}
-{% block meta_description %}Plan an authentic Ethiopian coffee ceremony for weddings, workplaces, universities, and private gatherings with Akako House.{% endblock %}
+{% block title %}Ethiopian Coffee Ceremony Service | Akako House{% endblock %}
+{% block meta_description %}Book an authentic Ethiopian coffee ceremony service for weddings, workplaces, universities, and private gatherings in Washington, DC, Maryland, and Northern Virginia.{% endblock %}
+{% block og_title %}Ethiopian Coffee Ceremony Service | Akako House{% endblock %}
+{% block og_description %}Bring an authentic Ethiopian coffee ceremony to your wedding, workplace, university, or private gathering in the Washington, DC area.{% endblock %}
+{% block twitter_title %}Ethiopian Coffee Ceremony Service | Akako House{% endblock %}
+{% block twitter_description %}Authentic Ethiopian coffee ceremonies for events across Washington, DC, Maryland, and Northern Virginia.{% endblock %}
 {% block extra_head %}
 <link rel="preload" as="image" href="{% static 'images/ceremony-background-kolo.webp' %}" type="image/webp">
 <script type="application/ld+json">
@@ -10,7 +14,8 @@
   "@context": "https://schema.org",
   "@type": "Service",
   "name": "Akako House Ethiopian Coffee Ceremony",
-  "description": "Authentic Ethiopian coffee ceremony experiences for private, workplace, university, wedding, and cultural gatherings.",
+  "serviceType": "Ethiopian coffee ceremony service",
+  "description": "Authentic Ethiopian coffee ceremony service for private, workplace, university, wedding, and cultural gatherings.",
   "areaServed": "{{ service_area_display|escapejs }}",
   "provider": {
     "@type": "Organization",
@@ -19,6 +24,30 @@
     "email": "{{ support_email|escapejs }}"
   },
   "url": "{{ site_url }}"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ProfessionalService",
+  "name": "Akako House",
+  "url": "{{ site_url }}",
+  "image": "{{ site_url }}{% static 'images/akako-coffee-pouring.jpg' %}",
+  "description": "Authentic Ethiopian coffee ceremony service for events in the Washington, DC metropolitan area.",
+  "areaServed": ["Washington, DC", "Maryland", "Northern Virginia"],
+  "telephone": "{{ support_phone_tel|escapejs }}",
+  "email": "{{ support_email|escapejs }}"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type": "Question", "name": "Is the quote instant?", "acceptedAnswer": {"@type": "Answer", "text": "No. Akako House reviews event size, location, and ceremony needs before sending a custom quote."}},
+    {"@type": "Question", "name": "Do you travel to my location?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Akako House provides ceremonies at homes, offices, venues, universities, weddings, and community events within its service area."}},
+    {"@type": "Question", "name": "Who performs the ceremony?", "acceptedAnswer": {"@type": "Answer", "text": "A trained Akako House Cultural Ambassador performs the ceremony using Akako House service and hospitality standards."}}
+  ]
 }
 </script>
 {% endblock %}
@@ -96,7 +125,7 @@
       <p class="hero-kicker">Ethiopian hospitality, brought to your gathering</p>
       <h1><span>Bring Ethiopian Coffee </span><span>Ceremony to Your Events</span></h1>
 
-      <p>Share an unforgettable Ethiopian tradition with your guests. Our Cultural Ambassadors bring an authentic coffee ceremony directly to weddings, workplaces, universities, and private celebrations.</p>
+      <p>Share an unforgettable Ethiopian tradition with your guests. Our Ethiopian coffee ceremony service brings a trained Cultural Ambassador directly to weddings, workplaces, universities, and private celebrations across Washington, DC, Maryland, and Northern Virginia.</p>
       <p class="hero-service-area"><span aria-hidden="true">●</span>{{ service_area_display }}</p>
       <div class="hero-actions">
         <div><a class="button primary" href="#request" data-conversion="hero_plan_ceremony"><span class="calendar-icon" aria-hidden="true"></span>Plan Your Ceremony</a></div>

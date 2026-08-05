@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Akako House{% endblock %}</title>
   <meta name="description" content="{% block meta_description %}Akako House brings authentic Ethiopian coffee ceremony experiences to gatherings across the Washington, DC metropolitan area.{% endblock %}">
+  <meta name="robots" content="{{ robots_directive }}">
   <link rel="canonical" href="{{ site_url }}{{ request.path }}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Akako House">
@@ -14,6 +15,9 @@
   <meta property="og:url" content="{{ site_url }}{{ request.path }}">
   <meta property="og:image" content="{{ site_url }}{% static 'images/akako-coffee-pouring.jpg' %}">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{% block twitter_title %}Akako House | Ethiopian Coffee Ceremony Service{% endblock %}">
+  <meta name="twitter:description" content="{% block twitter_description %}Book an authentic Ethiopian coffee ceremony service for gatherings across the Washington, DC metropolitan area.{% endblock %}">
+  <meta name="twitter:image" content="{{ site_url }}{% static 'images/akako-coffee-pouring.jpg' %}">
   <meta name="theme-color" content="#34752f">
   <link rel="icon" type="image/x-icon" href="{% static 'images/akako-jebena-favicon.ico' %}">
   <link rel="icon" type="image/png" sizes="512x512" href="{% static 'images/akako-jebena-favicon.png' %}">
