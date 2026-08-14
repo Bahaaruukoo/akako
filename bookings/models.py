@@ -1,4 +1,4 @@
-﻿import uuid
+import uuid
 from datetime import datetime, time, timedelta
 from decimal import Decimal
 
@@ -297,6 +297,10 @@ class CustomerAddress(models.Model):
 
 
 class QuoteRequest(models.Model):
+    class BillingType(models.TextChoices):
+        INDIVIDUAL = "individual", "Individual"
+        ORGANIZATION = "organization", "Company or organization"
+
     class Status(models.TextChoices):
         NEW = "new", "New"
         REVIEWING = "reviewing", "Reviewing"
@@ -336,6 +340,12 @@ class QuoteRequest(models.Model):
     customer_name = models.CharField(max_length=120, blank=True)
     email = models.EmailField(blank=True)
     phone = models.CharField(max_length=32, blank=True)
+    billing_type = models.CharField(max_length=20, choices=BillingType.choices, default=BillingType.INDIVIDUAL)
+    organization_name = models.CharField(max_length=180, blank=True)
+    billing_contact_name = models.CharField(max_length=160, blank=True)
+    billing_email = models.EmailField(blank=True)
+    billing_address = models.TextField(blank=True)
+    purchase_order_number = models.CharField(max_length=80, blank=True)
     event_type = models.CharField(max_length=30, choices=EventType.choices)
     event_date = models.DateField()
     event_time = models.TimeField(null=True, blank=True)
@@ -381,6 +391,12 @@ class QuoteRequest(models.Model):
     @property
     def quote_ready(self):
         return self.quoted_amount is not None and self.contact_complete
+
+    @property
+    def billing_complete(self):
+        if self.billing_type == self.BillingType.ORGANIZATION:
+            return bool(self.organization_name and self.billing_contact_name and self.billing_email and self.billing_address)
+        return bool(self.billing_contact_name and self.billing_email and self.billing_address)
 
     def event_datetime(self):
         value = datetime.combine(self.event_date, self.event_time or time(0, 0))
@@ -1107,6 +1123,10 @@ class Invoice(models.Model):
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
     customer_name = models.CharField(max_length=160)
     customer_email = models.EmailField()
+    billing_type = models.CharField(max_length=20, choices=QuoteRequest.BillingType.choices, default=QuoteRequest.BillingType.INDIVIDUAL)
+    organization_name = models.CharField(max_length=180, blank=True)
+    billing_contact_name = models.CharField(max_length=160, blank=True)
+    purchase_order_number = models.CharField(max_length=80, blank=True)
     billing_address = models.TextField(blank=True)
     description = models.CharField(max_length=240, default="Corporate event coffee service")
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)

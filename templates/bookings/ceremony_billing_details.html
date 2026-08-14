@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Confirm Billing Details | Akako House{% endblock %}
+
+{% block content %}
+<main class="quote-flow-page">
+  <section class="quote-flow-panel">
+    <a class="mini-brand" href="{% url 'home' %}">Akako <span>House</span></a>
+    {% if messages %}<div class="messages">{% for message in messages %}<p>{{ message }}</p>{% endfor %}</div>{% endif %}
+    <p class="eyebrow">Accepted quote</p>
+    <h1>Confirm your invoice details.</h1>
+    <p>Choose whether the invoice is for you personally or for a company. We will only ask for the information needed for that invoice.</p>
+    <form method="post" class="quote-editor" id="billing-details-form">
+      {% csrf_token %}
+      {% if form.non_field_errors %}<p class="notice error">{{ form.non_field_errors }}</p>{% endif %}
+      <div class="form-grid">
+        {% for field in form %}
+          <label data-billing-field="{{ field.name }}"{% if field.name == 'billing_address' or field.name == 'billing_type' %} class="full-span"{% endif %}{% if field.name == 'organization_name' or field.name == 'purchase_order_number' %}{% if quote_request.billing_type != 'organization' %} hidden{% endif %}{% endif %}><span data-field-label>{{ field.label }}</span>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{{ field.errors }}</label>
+        {% endfor %}
+      </div>
+      <p class="form-help" data-company-help{% if quote_request.billing_type != 'organization' %} hidden{% endif %}>If your company requires a PO number but has not issued it yet, you may leave it blank and contact Akako House before payment.</p>
+      <button class="button primary" type="submit">Confirm and Create Invoice</button>
+    </form>
+  </section>
+</main>
+<script>
+(function () {
+  const type = document.getElementById("id_billing_type");
+  if (!type) return;
+  const companyOnly = ["organization_name", "purchase_order_number"];
+  const contactLabel = document.querySelector('[data-billing-field="billing_contact_name"] [data-field-label]');
+  const emailLabel = document.querySelector('[data-billing-field="billing_email"] [data-field-label]');
+  const companyHelp = document.querySelector("[data-company-help]");
+
+  function updateBillingFields() {
+    const company = type.value === "organization";
+    companyOnly.forEach(function (name) {
+      const wrapper = document.querySelector('[data-billing-field="' + name + '"]');
+      const input = document.getElementById("id_" + name);
+      if (wrapper) wrapper.hidden = !company;
+      if (wrapper) wrapper.style.display = company ? "" : "none";
+      if (input) input.disabled = !company;
+    });
+    if (contactLabel) contactLabel.textContent = company ? "Billing contact (Attn)" : "Full legal name";
+    if (emailLabel) emailLabel.textContent = company ? "Billing or accounts-payable email" : "Invoice email";
+    if (companyHelp) companyHelp.hidden = !company;
+  }
+
+  type.addEventListener("change", updateBillingFields);
+  updateBillingFields();
+})();
+</script>
+{% endblock %}
+
+
+

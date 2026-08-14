@@ -1,4 +1,4 @@
-﻿from django.urls import path
+from django.urls import path
 from allauth.account import views as account_views
 
 from . import views
@@ -41,7 +41,9 @@ urlpatterns = [
     path("quote/<uuid:public_id>/review/", views.quote_review, name="quote_review"),
     path("quote/<uuid:public_id>/policies/<int:acceptance_id>/", views.accepted_policy_detail, name="accepted_policy_detail"),
     path("quote/<uuid:public_id>/<str:decision>/", views.quote_decision, name="quote_decision"),
+    path("ceremony/<uuid:public_id>/billing/", views.ceremony_billing_details, name="ceremony_billing_details"),
     path("ceremony/<uuid:public_id>/payment/", views.ceremony_payment, name="ceremony_payment"),
+    path("ceremony/<uuid:public_id>/invoice/", views.ceremony_invoice_download, name="ceremony_invoice_download"),
     path(
         "ceremony/<uuid:public_id>/payment/<str:choice>/checkout/",
         views.start_payment_checkout,

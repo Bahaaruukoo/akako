@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+from datetime import datetime
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -301,7 +301,7 @@ def build_payment_url(ceremony):
     )
 
 
-def send_payment_options_email(ceremony, payment_url=None):
+def send_payment_options_email(ceremony, payment_url=None, *, invoice=None, invoice_url=None):
     payment_url = payment_url or build_payment_url(ceremony)
     deposit = ceremony.deposit_payment
     final = ceremony.final_payment
@@ -311,9 +311,36 @@ def send_payment_options_email(ceremony, payment_url=None):
         "You may pay the initial deposit and the balance later, or pay the full amount now.\n\n"
         f"Deposit: ${deposit.expected_amount}\n"
         f"Final balance: ${final.expected_amount}\n"
-        f"Payment options: {payment_url}\n\n"
-        "Thank you,\nAkako House"
+        f"Payment options: {payment_url}\n"
     )
+    if invoice:
+        message += f"Invoice: {invoice.number}\n"
+        if invoice_url:
+            message += f"Download invoice: {invoice_url}\n"
+        message += "You may forward the attached invoice to your accounting department.\n"
+    message += "\nThank you,\nAkako House"
+
+    if invoice:
+        from django.core.mail import EmailMessage
+        from .invoice_service import generate_and_store_invoice
+
+        content = generate_and_store_invoice(invoice)
+        email = EmailMessage(
+            "Your Akako House invoice and payment options",
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [invoice.customer_email],
+        )
+        email.attach(f"{invoice.number}.pdf", content, "application/pdf")
+        email.send(fail_silently=False)
+        invoice.last_emailed_to = invoice.customer_email
+        invoice.last_emailed_at = timezone.now()
+        invoice.email_subject = email.subject
+        invoice.email_body = message
+        invoice.save(update_fields=["last_emailed_to", "last_emailed_at", "email_subject", "email_body", "updated_at"])
+        invoice.refresh_status()
+        return
+
     send_mail(
         "Choose your Akako House ceremony payment option",
         message,
@@ -321,7 +348,6 @@ def send_payment_options_email(ceremony, payment_url=None):
         [ceremony.quote.email],
         fail_silently=False,
     )
-
 
 def send_payment_confirmation_email(ceremony, description, amount):
     send_mail(
@@ -660,5 +686,8 @@ def fulfill_payment_checkout(checkout, payment_reference=""):
             lambda: notify_payment_received(ceremony, description, checkout.amount)
         )
     return True
+
+
+
 
 

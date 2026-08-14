@@ -1,4 +1,4 @@
-﻿from datetime import date, time
+from datetime import date, time
 from decimal import Decimal
 import tempfile
 from unittest.mock import patch
@@ -1227,12 +1227,28 @@ class BookingFlowTests(TestCase):
             {"policy_consent": "on"},
         )
 
-        self.assertRedirects(
-            response,
-            reverse("quote_review", kwargs={"public_id": quote_request.public_id}),
-        )
         quote_request.refresh_from_db()
+        billing_url = reverse("ceremony_billing_details", kwargs={"public_id": quote_request.ceremony.public_id})
+        self.assertRedirects(response, billing_url)
         self.assertEqual(quote_request.status, QuoteRequest.Status.ACCEPTED)
+        self.assertEqual(quote_request.ceremony.invoices.count(), 0)
+        billing_page = self.client.get(billing_url)
+        self.assertContains(billing_page, "Full legal name")
+        self.assertContains(billing_page, "Invoice email")
+        self.assertContains(billing_page, 'data-billing-field="organization_name" hidden', html=False)
+        self.assertContains(billing_page, 'data-billing-field="purchase_order_number" hidden', html=False)
+        confirmation = self.client.post(billing_url, {
+            "billing_type": QuoteRequest.BillingType.INDIVIDUAL,
+            "organization_name": "Should Not Be Saved",
+            "billing_contact_name": "Aster Legal Bekele",
+            "billing_email": "aster.billing@example.com",
+            "billing_address": "12 Main Street\nSilver Spring, MD 20910",
+            "purchase_order_number": "SHOULD-CLEAR",
+        })
+        self.assertRedirects(confirmation, reverse("ceremony_payment", kwargs={"public_id": quote_request.ceremony.public_id}))
+        quote_request.refresh_from_db()
+        self.assertEqual(quote_request.organization_name, "")
+        self.assertEqual(quote_request.purchase_order_number, "")
         self.assertEqual(
             quote_request.policy_acceptances.count(),
             PolicyDocument.objects.filter(is_active=True).count(),
@@ -1260,12 +1276,84 @@ class BookingFlowTests(TestCase):
         self.assertEqual(quote_request.ceremony.status, Ceremony.Status.AWAITING_DEPOSIT)
         self.assertEqual(quote_request.ceremony.payments.count(), 2)
         self.assertEqual(len(mail.outbox), 2)
-        payment_email = next(message for message in mail.outbox if message.to == [quote_request.email])
+        payment_email = next(message for message in mail.outbox if message.to == ["aster.billing@example.com"])
         support_email = next(message for message in mail.outbox if message.to == ["support@akakohouse.com"])
         self.assertIn("payment option", payment_email.subject.lower())
         self.assertIn(str(quote_request.ceremony.public_id), payment_email.body)
+        invoice = quote_request.ceremony.invoices.get()
+        self.assertEqual(invoice.billing_type, QuoteRequest.BillingType.INDIVIDUAL)
+        self.assertEqual(invoice.customer_name, "Aster Legal Bekele")
+        self.assertEqual(invoice.customer_email, "aster.billing@example.com")
+        self.assertEqual(invoice.last_emailed_to, "aster.billing@example.com")
+        self.assertEqual(invoice.organization_name, "")
+        self.assertIn(invoice.number, payment_email.body)
+        self.assertIn(reverse("ceremony_invoice_download", args=[quote_request.ceremony.public_id]), payment_email.body)
+        self.assertEqual(payment_email.attachments[0][0], f"{invoice.number}.pdf")
+        self.assertEqual(payment_email.attachments[0][2], "application/pdf")
         self.assertIn("accepted", support_email.subject.lower())
 
+    def test_accepted_quote_invoice_is_idempotent_and_visible_on_payment_page(self):
+        quote = QuoteRequest.objects.create(
+            customer_name="Corporate Customer", email="corporate@example.com", phone="555-0140",
+            event_type=QuoteRequest.EventType.CORPORATE, event_date=date(2026, 9, 24),
+            event_time=time(10, 0), location="Office", guest_count=40,
+            quoted_amount=Decimal("700.00"), deposit_amount=Decimal("400.00"),
+            quote_expires_at=timezone.now() + timezone.timedelta(days=7), status=QuoteRequest.Status.QUOTED,
+        )
+        self.create_capacity_hold(quote)
+        response = self.client.post(reverse("quote_decision", args=[quote.public_id, "accept"]), {"policy_consent": "on"})
+        quote.refresh_from_db()
+        ceremony = quote.ceremony
+        billing_url = reverse("ceremony_billing_details", args=[ceremony.public_id])
+        self.assertRedirects(response, billing_url)
+        self.assertEqual(ceremony.invoices.count(), 0)
+        billing_page = self.client.get(billing_url)
+        self.assertContains(billing_page, "Confirm your invoice details")
+        confirmation = self.client.post(billing_url, {
+            "billing_type": QuoteRequest.BillingType.ORGANIZATION,
+            "organization_name": "Example Corporation",
+            "billing_contact_name": "Corporate Customer",
+            "billing_email": "ap@example.com",
+            "billing_address": "100 Main Street\nRichmond, VA 23219",
+            "purchase_order_number": "PO-1007",
+        })
+        self.assertRedirects(confirmation, reverse("ceremony_payment", args=[ceremony.public_id]))
+        self.assertEqual(ceremony.invoices.count(), 1)
+        invoice = ceremony.invoices.get()
+        self.assertEqual(invoice.organization_name, "Example Corporation")
+        self.assertEqual(invoice.customer_email, "ap@example.com")
+        self.assertEqual(invoice.purchase_order_number, "PO-1007")
+        payment_page = self.client.get(reverse("ceremony_payment", args=[ceremony.public_id]))
+        self.assertContains(payment_page, invoice.number)
+        self.assertContains(payment_page, reverse("ceremony_invoice_download", args=[ceremony.public_id]))
+        self.assertEqual(ceremony.invoices.count(), 1)
+
+        repeat = self.client.post(reverse("quote_decision", args=[quote.public_id, "accept"]), {"policy_consent": "on"})
+        self.assertRedirects(repeat, reverse("quote_review", args=[quote.public_id]))
+        self.assertEqual(ceremony.invoices.count(), 1)
+
+    def test_customer_invoice_download_is_scoped_to_ceremony_uuid(self):
+        ceremony = self.create_ceremony(event_date=date(2026, 10, 1), deposit=Decimal("150.00"))
+        quote = ceremony.quote
+        quote.billing_contact_name = quote.customer_name
+        quote.billing_email = quote.email
+        quote.billing_address = "12 Main Street, Richmond, VA 23219"
+        quote.save(update_fields=["billing_contact_name", "billing_email", "billing_address", "updated_at"])
+        page = self.client.get(reverse("ceremony_payment", args=[ceremony.public_id]))
+        self.assertEqual(page.status_code, 200)
+        invoice = ceremony.invoices.get()
+        response = self.client.get(reverse("ceremony_invoice_download", args=[ceremony.public_id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Cache-Control"], "private, no-store")
+        self.assertIn(f'filename="{invoice.number}.pdf"', response["Content-Disposition"])
+
+        quote.billing_contact_name = ""
+        quote.billing_email = ""
+        quote.billing_address = ""
+        quote.save(update_fields=["billing_contact_name", "billing_email", "billing_address", "updated_at"])
+        legacy_payment_page = self.client.get(reverse("ceremony_payment", args=[ceremony.public_id]))
+        self.assertNotContains(legacy_payment_page, "Confirm Billing Details")
+        self.assertContains(legacy_payment_page, invoice.number)
     def test_quote_email_contains_review_link(self):
         quote_request = QuoteRequest.objects.create(
             customer_name="Aster Bekele",
@@ -1654,6 +1742,11 @@ class BookingFlowTests(TestCase):
     @patch("bookings.views.create_checkout_session")
     def test_signed_checkout_webhook_fulfills_full_payment_once(self, create_session):
         ceremony = self.create_ceremony(deposit=Decimal("150.00"))
+        quote = ceremony.quote
+        quote.billing_contact_name = quote.customer_name
+        quote.billing_email = quote.email
+        quote.billing_address = "12 Main Street, Richmond, VA 23219"
+        quote.save(update_fields=["billing_contact_name", "billing_email", "billing_address", "updated_at"])
         create_session.return_value = {
             "id": "cs_test_full_001",
             "url": "https://checkout.example/session/full-001",
@@ -2336,6 +2429,9 @@ class InvoiceFeatureTests(TestCase):
         self.client.logout()
         response = self.client.get(reverse("invoice_download", args=[self.invoice.public_id]))
         self.assertEqual(response.status_code, 302)
+
+
+
 
 
 

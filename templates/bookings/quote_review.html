@@ -73,9 +73,15 @@
         </form>
       </div>
     {% elif quote_request.status == quote_request.Status.ACCEPTED %}
-      <p class="decision-note">You accepted this quote. We will follow up with payment and scheduling details.</p>
+      <p class="decision-note">You accepted this quote. Continue below whenever you are ready.</p>
       {% if quote_request.policy_acceptances.exists %}<p class="accepted-policy-note">Your policy agreement was recorded with this quote.</p>{% endif %}
-      {% if quote_request.ceremony %}<a class="button primary full" href="{% url 'ceremony_payment' quote_request.ceremony.public_id %}">Continue to Payment Options</a>{% endif %}
+      {% if quote_request.ceremony %}
+        {% if quote_request.billing_complete or has_active_invoice %}
+          <a class="button primary full" href="{% url 'ceremony_payment' quote_request.ceremony.public_id %}">Continue to Payment Options</a>
+        {% else %}
+          <a class="button primary full" href="{% url 'ceremony_billing_details' quote_request.ceremony.public_id %}">Confirm Billing Details</a>
+        {% endif %}
+      {% endif %}
     {% elif quote_request.status == quote_request.Status.DECLINED %}
       <p class="decision-note">You declined this quote.</p>
     {% elif quote_request.status == quote_request.Status.EXPIRED %}
@@ -84,3 +90,5 @@
   </section>
 </main>
 {% endblock %}
+
+

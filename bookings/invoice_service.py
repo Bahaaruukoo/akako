@@ -1,4 +1,5 @@
-﻿from hashlib import sha256
+from decimal import Decimal
+from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
 from xml.sax.saxutils import escape
@@ -42,7 +43,16 @@ def build_invoice_pdf(invoice):
     doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=.65*inch, rightMargin=.65*inch, topMargin=.6*inch, bottomMargin=.65*inch, title=f"Invoice {invoice.number}")
     quote = invoice.ceremony.quote
     story = [Table([[p("AKAKO HOUSE", "BrandX"), p("INVOICE", "RightX")], [p("Ethiopian coffee ceremony service"), p(f"Invoice: {invoice.number}<br/>Issue date: {invoice.issue_date:%B %d, %Y}<br/>Status: {invoice.get_status_display()}", "RightX")]], colWidths=[4.5*inch, 2.7*inch], style=[("VALIGN",(0,0),(-1,-1),"TOP"),("LINEBELOW",(0,-1),(-1,-1),1.5,gold),("BOTTOMPADDING",(0,-1),(-1,-1),12)]), Spacer(1,16)]
-    story += [Table([[p("FROM", "LabelX"), p("BILL TO", "LabelX")], [p(f"{escape(settings.BUSINESS_LEGAL_NAME)}<br/>{escape(settings.BUSINESS_PRINCIPAL_ADDRESS)}<br/>support@akakohouse.com<br/>+1 (571) 715-8524"), p(f"{escape(invoice.customer_name)}<br/>{escape(invoice.customer_email)}<br/>{escape(invoice.billing_address)}")]], colWidths=[3.6*inch,3.6*inch], style=[("VALIGN",(0,0),(-1,-1),"TOP")]), Spacer(1,18)]
+    bill_to = []
+    if invoice.organization_name:
+        bill_to.append(escape(invoice.organization_name))
+    contact = invoice.billing_contact_name or invoice.customer_name
+    if contact:
+        bill_to.append(f"Attn: {escape(contact)}" if invoice.organization_name else escape(contact))
+    bill_to.extend([escape(invoice.customer_email), escape(invoice.billing_address)])
+    if invoice.purchase_order_number:
+        bill_to.append(f"PO: {escape(invoice.purchase_order_number)}")
+    story += [Table([[p("FROM", "LabelX"), p("BILL TO", "LabelX")], [p(f"{escape(settings.BUSINESS_LEGAL_NAME)}<br/>{escape(settings.BUSINESS_PRINCIPAL_ADDRESS)}<br/>support@akakohouse.com<br/>+1 (571) 715-8524"), p("<br/>".join(filter(None, bill_to)))]], colWidths=[3.6*inch,3.6*inch], style=[("VALIGN",(0,0),(-1,-1),"TOP")]), Spacer(1,18)]
     event = f"Event: {escape(quote.get_event_type_display())}<br/>Date: {quote.event_date:%B %d, %Y}<br/>Location: {escape(quote.location)}<br/>Guests: {quote.guest_count}"
     story += [Table([[p("EVENT DETAILS", "LabelX")],[p(event)]], colWidths=[7.2*inch], style=[("BACKGROUND",(0,0),(-1,-1),cream),("BOX",(0,0),(-1,-1),.75,gold),("LEFTPADDING",(0,0),(-1,-1),10),("TOPPADDING",(0,0),(-1,-1),8),("BOTTOMPADDING",(0,0),(-1,-1),8)]), Spacer(1,18)]
     story += [Table([[p("DESCRIPTION", "LabelX"), p("AMOUNT", "LabelX")],[p(escape(invoice.description)), p(money(invoice.total_amount), "RightX")]], colWidths=[5.8*inch,1.4*inch], style=[("BACKGROUND",(0,0),(-1,0),navy),("BOX",(0,0),(-1,-1),.75,colors.HexColor("#D8DEE0")),("LEFTPADDING",(0,0),(-1,-1),10),("RIGHTPADDING",(0,0),(-1,-1),10),("TOPPADDING",(0,0),(-1,-1),9),("BOTTOMPADDING",(0,0),(-1,-1),9)]), Spacer(1,12)]
@@ -69,6 +79,10 @@ def invoice_revision_checksum(invoice):
         invoice.status,
         invoice.customer_name,
         invoice.customer_email,
+        invoice.billing_type,
+        invoice.organization_name,
+        invoice.billing_contact_name,
+        invoice.purchase_order_number,
         invoice.billing_address,
         invoice.description,
         invoice.total_amount,
@@ -231,8 +245,41 @@ def send_payment_receipt_email(invoice, transaction, *, booking_status, generate
     invoice.save(update_fields=["last_emailed_to", "last_emailed_at", "email_subject", "email_body", "updated_at"])
     invoice.refresh_status()
     return message
+@transaction.atomic
+def ensure_invoice_for_ceremony(ceremony, *, created_by=None):
+    """Return the active ceremony invoice, creating it once under a row lock."""
+    from .models import Ceremony, Invoice
 
+    ceremony = Ceremony.objects.select_for_update().select_related("quote").get(pk=ceremony.pk)
+    existing = ceremony.invoices.exclude(status=Invoice.Status.VOID).order_by("created_at").first()
+    if existing:
+        if not existing.pdf_file or not existing.pdf_file.storage.exists(existing.pdf_file.name):
+            generate_and_store_invoice(existing, generated_by=created_by)
+        return existing, False
 
+    quote = ceremony.quote
+    if not quote.billing_complete:
+        raise ValueError("Billing details must be confirmed before creating an invoice.")
+    deposit = ceremony.deposit_payment
+    invoice = Invoice.objects.create(
+        ceremony=ceremony,
+        customer_name=quote.billing_contact_name,
+        customer_email=quote.billing_email,
+        billing_type=quote.billing_type,
+        organization_name=quote.organization_name,
+        billing_contact_name=quote.billing_contact_name,
+        billing_address=quote.billing_address,
+        purchase_order_number=quote.purchase_order_number,
+        description=f"{quote.get_event_type_display()} Ethiopian coffee ceremony for {quote.guest_count} guests",
+        total_amount=quote.quoted_amount,
+        first_payment_amount=quote.deposit_amount or Decimal("0.00"),
+        first_payment_due_date=deposit.due_at.date() if deposit and deposit.due_at else None,
+        balance_due_date=ceremony.final_payment_due_at.date() if ceremony.final_payment_due_at else None,
+        notes=quote.quote_notes,
+        created_by=created_by,
+    )
+    generate_and_store_invoice(invoice, generated_by=created_by)
+    return invoice, True
 
 
 

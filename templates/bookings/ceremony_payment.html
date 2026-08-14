@@ -14,6 +14,15 @@
     <h1>Choose how you would like to pay.</h1>
     <p class="payment-intro">{{ quote_request.customer_name }}, your ceremony is scheduled for {{ quote_request.event_date }}. You may reserve it with the deposit or settle the complete balance now.</p>
 
+    {% if billing_required %}
+      <section class="payment-invoice-card"><div><p class="eyebrow">Billing details required</p><h2>Confirm who should receive the invoice</h2><p>Your invoice and payment email will be created after the company billing information is confirmed.</p></div><a class="button primary" href="{% url 'ceremony_billing_details' ceremony.public_id %}">Confirm Billing Details</a></section>
+    {% endif %}
+    {% if invoice %}
+      <section class="payment-invoice-card">
+        <div><p class="eyebrow">Billing document</p><h2>Invoice {{ invoice.number }}</h2><p>Download the invoice for your records, accounting approval, or payment by bank transfer, Zelle, or check.</p></div>
+        <a class="button secondary" href="{% url 'ceremony_invoice_download' ceremony.public_id %}">Download Invoice</a>
+      </section>
+    {% endif %}
     <div class="customer-payment-summary">
       <div><span>Total ceremony quote</span><strong>${{ quote_request.quoted_amount }}</strong></div>
       <div><span>Outstanding today</span><strong>${{ outstanding }}</strong></div>
@@ -38,3 +47,4 @@
   </section>
 </main>
 {% endblock %}
+

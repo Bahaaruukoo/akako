@@ -1,4 +1,4 @@
-﻿from django import forms
+from django import forms
 from allauth.account.forms import SignupForm
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -627,7 +627,7 @@ class CeremonyOutcomeForm(forms.Form):
 class InvoiceForm(forms.ModelForm):
     class Meta:
         model = Invoice
-        fields = ["ceremony", "customer_name", "customer_email", "billing_address", "description", "total_amount", "first_payment_amount", "issue_date", "first_payment_due_date", "balance_due_date", "payment_instructions", "notes"]
+        fields = ["ceremony", "billing_type", "organization_name", "billing_contact_name", "customer_name", "customer_email", "billing_address", "purchase_order_number", "description", "total_amount", "first_payment_amount", "issue_date", "first_payment_due_date", "balance_due_date", "payment_instructions", "notes"]
         widgets = {
             "billing_address": forms.Textarea(attrs={"rows": 2}),
             "payment_instructions": forms.Textarea(attrs={"rows": 3}),
@@ -646,6 +646,41 @@ class InvoiceForm(forms.ModelForm):
             self.add_error("first_payment_amount", "First payment cannot exceed the invoice total.")
         return data
 
+
+class BillingDetailsForm(forms.ModelForm):
+    class Meta:
+        model = QuoteRequest
+        fields = ["billing_type", "organization_name", "billing_contact_name", "billing_email", "billing_address", "purchase_order_number"]
+        labels = {
+            "billing_type": "Who should the invoice be addressed to?",
+            "organization_name": "Legal company or organization name",
+            "billing_contact_name": "Billing contact (Attn)",
+            "billing_email": "Billing or accounts-payable email",
+            "purchase_order_number": "Purchase order (PO) number, if required",
+        }
+        widgets = {"billing_address": forms.Textarea(attrs={"rows": 3})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.is_bound and self.instance:
+            if not self.initial.get("billing_contact_name"):
+                self.initial["billing_contact_name"] = self.instance.billing_contact_name or self.instance.customer_name
+            if not self.initial.get("billing_email"):
+                self.initial["billing_email"] = self.instance.billing_email or self.instance.email
+
+    def clean(self):
+        data = super().clean()
+        billing_type = data.get("billing_type")
+        required = ("billing_contact_name", "billing_email", "billing_address")
+        if billing_type == QuoteRequest.BillingType.ORGANIZATION:
+            required = ("organization_name",) + required
+        for field in required:
+            if not data.get(field):
+                self.add_error(field, "This field is required for the invoice.")
+        if billing_type == QuoteRequest.BillingType.INDIVIDUAL:
+            data["organization_name"] = ""
+            data["purchase_order_number"] = ""
+        return data
 
 class InvoiceTransactionForm(forms.ModelForm):
     class Meta:

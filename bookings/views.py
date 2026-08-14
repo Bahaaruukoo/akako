@@ -1,4 +1,4 @@
-﻿from decimal import Decimal
+from decimal import Decimal
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
@@ -19,6 +19,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from .forms import (
     AccountIdentityForm,
+    BillingDetailsForm,
     ClientOrganizationForm,
     CeremonyOutcomeForm,
     CustomerAddressForm,
@@ -47,7 +48,7 @@ from .forms import (
     ShopInterestForm,
     TestimonialForm,
 )
-from .invoice_service import generate_and_store_invoice, send_invoice_email, send_payment_receipt_email
+from .invoice_service import ensure_invoice_for_ceremony, generate_and_store_invoice, send_invoice_email, send_payment_receipt_email
 from .booking_progress import allocate_invoice_transaction, record_linked_invoice_transaction, sync_booking_milestones
 from .models import (
     AvailabilityOffer,
@@ -839,9 +840,12 @@ def quote_review(request, public_id):
         quote_request.save(update_fields=["status", "updated_at"])
         release_quote_holds(quote_request, "Customer quote expired.", expired=True)
         notify_quote_expired(quote_request)
+    ceremony = getattr(quote_request, "ceremony", None)
+    has_active_invoice = bool(ceremony and ceremony.invoices.exclude(status=Invoice.Status.VOID).exists())
     return render(request, "bookings/quote_review.html", {
         "quote_request": quote_request,
         "policies": PolicyDocument.objects.filter(is_active=True),
+        "has_active_invoice": has_active_invoice,
     })
 
 
@@ -918,20 +922,22 @@ def quote_decision(request, public_id, decision):
         ceremony.save(update_fields=["coverage_status", "updated_at"])
         if not ceremony.deposit_payment or ceremony.deposit_payment.status == Payment.Status.WAIVED:
             convert_capacity_hold(ceremony)
-        try:
-            send_payment_options_email(
-                ceremony,
-                request.build_absolute_uri(
-                    reverse("ceremony_payment", args=[ceremony.public_id])
-                ),
-            )
-        except Exception:
-            pass
+        if quote_request.event_type == QuoteRequest.EventType.CORPORATE and not quote_request.organization_name:
+            quote_request.billing_type = QuoteRequest.BillingType.ORGANIZATION
+            quote_request.save(update_fields=["billing_type", "updated_at"])
+        if quote_request.billing_complete:
+            try:
+                invoice, _created = ensure_invoice_for_ceremony(ceremony)
+                payment_url = request.build_absolute_uri(reverse("ceremony_payment", args=[ceremony.public_id]))
+                send_payment_options_email(ceremony, payment_url, invoice=invoice, invoice_url=request.build_absolute_uri(reverse("ceremony_invoice_download", args=[ceremony.public_id])))
+                sync_booking_milestones(ceremony, source=f"invoice:{invoice.number}:accepted")
+                messages.success(request, "Quote accepted. Your invoice and payment options are ready.")
+            except Exception:
+                notify_staff(kind=Notification.Kind.QUOTE_ACCEPTED, title="Accepted quote invoice needs attention", message=f"Invoice creation or delivery needs attention for {quote_request.customer_name}'s {quote_request.event_date} ceremony.", event_key=f"quote:{quote_request.pk}:invoice-creation-failed", action_url=reverse("ceremony_detail", args=[ceremony.public_id]))
+                messages.warning(request, "Your quote was accepted. Akako House will follow up about the invoice.")
+        else:
+            messages.success(request, "Quote accepted. Please confirm the billing details for your invoice.")
         notify_quote_accepted(quote_request)
-        messages.success(
-            request,
-            "Quote accepted. We will follow up with deposit and scheduling details.",
-        )
     elif decision == "decline":
         quote_request.decline_quote()
         release_quote_holds(quote_request, "Customer declined the quote.")
@@ -939,8 +945,35 @@ def quote_decision(request, public_id, decision):
         messages.info(request, "Quote declined. Thank you for considering Akako House.")
     else:
         return HttpResponseBadRequest("Unknown quote decision.")
+    if decision == "accept":
+        if ceremony.quote.billing_complete:
+            return redirect("ceremony_payment", public_id=ceremony.public_id)
+        return redirect("ceremony_billing_details", public_id=ceremony.public_id)
     return redirect("quote_review", public_id=quote_request.public_id)
 
+
+def ceremony_billing_details(request, public_id):
+    ceremony = get_object_or_404(Ceremony.objects.select_related("quote"), public_id=public_id)
+    quote = ceremony.quote
+    if quote.status != QuoteRequest.Status.ACCEPTED:
+        raise Http404("Billing confirmation is only available for accepted quotes.")
+    if ceremony.invoices.exclude(status=Invoice.Status.VOID).exists():
+        messages.info(request, "Billing details have already been confirmed for this invoice.")
+        return redirect("ceremony_payment", public_id=ceremony.public_id)
+    form = BillingDetailsForm(request.POST or None, instance=quote)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        try:
+            invoice, _created = ensure_invoice_for_ceremony(ceremony)
+            payment_url = request.build_absolute_uri(reverse("ceremony_payment", args=[ceremony.public_id]))
+            send_payment_options_email(ceremony, payment_url, invoice=invoice, invoice_url=request.build_absolute_uri(reverse("ceremony_invoice_download", args=[ceremony.public_id])))
+            sync_booking_milestones(ceremony, source=f"invoice:{invoice.number}:billing-confirmed")
+            messages.success(request, "Billing details confirmed. Your invoice has been created and emailed.")
+            return redirect("ceremony_payment", public_id=ceremony.public_id)
+        except Exception:
+            notify_staff(kind=Notification.Kind.QUOTE_ACCEPTED, title="Confirmed billing details need an invoice", message=f"Billing was confirmed, but invoice creation or delivery needs attention for {quote.customer_name}.", event_key=f"quote:{quote.pk}:confirmed-billing-invoice-failed", action_url=reverse("ceremony_detail", args=[ceremony.public_id]))
+            messages.error(request, "Your billing details were saved, but the invoice could not be delivered. Akako House will follow up.")
+    return render(request, "bookings/ceremony_billing_details.html", {"ceremony": ceremony, "quote_request": quote, "form": form})
 
 def ceremony_payment(request, public_id):
     ceremony = get_object_or_404(
@@ -955,6 +988,13 @@ def ceremony_payment(request, public_id):
             payment_type__in=[Payment.PaymentType.DEPOSIT, Payment.PaymentType.FINAL]
         ).exclude(status__in=[Payment.Status.PAID, Payment.Status.WAIVED])
     )
+    invoice = ceremony.invoices.exclude(status=Invoice.Status.VOID).order_by("created_at").first()
+    if not invoice:
+        try:
+            invoice, _created = ensure_invoice_for_ceremony(ceremony)
+        except Exception:
+            invoice = None
+    billing_ready = ceremony.quote.billing_complete or bool(invoice)
     coverage_confirmed = ceremony.coverage_status == Ceremony.CoverageStatus.UNRESERVED or ceremony.quote.capacity_holds.filter(
         status__in=[CapacityHold.Status.CONFIRMED, CapacityHold.Status.CONVERTED]
     ).exists()
@@ -967,9 +1007,12 @@ def ceremony_payment(request, public_id):
             "deposit": deposit,
             "final_payment": final_payment,
             "outstanding": outstanding,
+            "invoice": invoice,
+            "billing_required": not billing_ready,
             "coverage_confirmed": coverage_confirmed,
             "checkout_enabled": bool(
                 coverage_confirmed
+                and billing_ready
                 and settings.PAYMENT_PROVIDER == "stripe" and settings.STRIPE_SECRET_KEY
             ),
             "checkout_success": request.GET.get("checkout") == "success",
@@ -979,10 +1022,31 @@ def ceremony_payment(request, public_id):
     )
 
 
+def ceremony_invoice_download(request, public_id):
+    ceremony = get_object_or_404(Ceremony.objects.select_related("quote"), public_id=public_id)
+    invoice = ceremony.invoices.exclude(status=Invoice.Status.VOID).order_by("created_at").first()
+    if not invoice:
+        raise Http404("No invoice is available for this ceremony.")
+    if not invoice.pdf_file or not invoice.pdf_file.storage.exists(invoice.pdf_file.name):
+        generate_and_store_invoice(invoice)
+        invoice.refresh_from_db(fields=["pdf_file", "pdf_generated_at"])
+    response = FileResponse(
+        invoice.pdf_file.open("rb"),
+        as_attachment=True,
+        filename=f"{invoice.number}.pdf",
+        content_type="application/pdf",
+    )
+    response["Cache-Control"] = "private, no-store"
+    return response
+
 def start_payment_checkout(request, public_id, choice):
     ceremony = get_object_or_404(Ceremony.objects.select_related("quote"), public_id=public_id)
     if request.method != "POST":
         return HttpResponseBadRequest("Checkout must be started from the payment page.")
+    has_active_invoice = ceremony.invoices.exclude(status=Invoice.Status.VOID).exists()
+    if not ceremony.quote.billing_complete and not has_active_invoice:
+        messages.error(request, "Please confirm the billing details before making a payment.")
+        return redirect("ceremony_billing_details", public_id=ceremony.public_id)
     if ceremony.terminal:
         messages.error(request, "This ceremony is closed and cannot accept a payment.")
         return redirect("ceremony_payment", public_id=ceremony.public_id)
@@ -2358,12 +2422,6 @@ def invoice_void(request, public_id):
     generate_and_store_invoice(invoice)
     messages.success(request, f"Invoice {invoice.number} was voided and retained for reference.")
     return redirect("invoice_detail", public_id=invoice.public_id)
-
-
-
-
-
-
 
 
 

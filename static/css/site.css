@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --coffee: #3a2113;
   --coffee-2: #6b4328;
   --green: #3e7a35;
@@ -3307,3 +3307,15 @@ mark {
 .finance-actions button { background: none; border: 0; cursor: pointer; font: inherit; padding: 0; }
 @media (max-width: 800px) { .finance-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .finance-tabs { overflow-x: auto; } }
 @media (max-width: 520px) { .finance-summary { grid-template-columns: 1fr; } }
+
+.payment-invoice-card { align-items: center; background: #fffdfa; border: 1px solid var(--line); border-radius: 12px; display: flex; gap: 1.25rem; justify-content: space-between; margin: 1.1rem 0; padding: 1rem 1.15rem; }
+.payment-invoice-card h2 { color: var(--coffee); margin: .15rem 0 .35rem; }
+.payment-invoice-card p { margin-bottom: 0; }
+.payment-invoice-card .button { flex: 0 0 auto; white-space: nowrap; }
+@media (max-width: 640px) { .payment-invoice-card { align-items: stretch; flex-direction: column; } .payment-invoice-card .button { text-align: center; } }
+
+[data-billing-field][hidden],
+[data-company-help][hidden] {
+  display: none !important;
+}
+
