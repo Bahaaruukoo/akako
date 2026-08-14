@@ -407,11 +407,14 @@ def send_payment_overdue_email(payment):
 
 def send_ceremony_reminder_email(ceremony):
     quote = ceremony.quote
+    event_location = quote.event_address or quote.location
+    access_line = f"Access instructions: {quote.event_access_instructions}\n" if quote.event_access_instructions else ""
     customer_message = (
         f"Hi {quote.customer_name or 'there'},\n\n"
         f"Your Akako House ceremony is coming up on {quote.event_date}"
         f"{f' at {quote.event_time}' if quote.event_time else ''}.\n"
-        f"Location: {quote.location}\n"
+        f"Location: {event_location}\n"
+        f"{access_line}"
         f"Cultural Ambassador: {'Confirmed' if ceremony.assigned_partner else 'Being confirmed'}\n\n"
         "We look forward to serving you.\nAkako House"
     )
@@ -428,7 +431,7 @@ def send_ceremony_reminder_email(ceremony):
             (
                 f"Ceremony: {quote.get_event_type_display()}\n"
                 f"Date/time: {quote.event_date} {quote.event_time or ''}\n"
-                f"Location: {quote.location}\nGuests: {quote.guest_count}\n"
+                f"Location: {event_location}\n{access_line}Guests: {quote.guest_count}\n"
                 f"Customer: {quote.customer_name}\nPhone: {quote.phone}\n"
             ),
             settings.DEFAULT_FROM_EMAIL,
@@ -439,12 +442,14 @@ def send_ceremony_reminder_email(ceremony):
 
 def send_assignment_confirmation_email(ceremony):
     quote = ceremony.quote
+    event_location = quote.event_address or quote.location
+    access_line = f"Access instructions: {quote.event_access_instructions}\n" if quote.event_access_instructions else ""
     send_mail(
         "Your Akako House Cultural Ambassador is assigned",
         (
             f"Hi {quote.customer_name or 'there'},\n\n"
             f"Your Akako House Cultural Ambassador has been assigned to your ceremony on {quote.event_date}.\n"
-            f"Location: {quote.location}\n\nThank you,\nAkako House"
+            f"Location: {event_location}\n{access_line}\nThank you,\nAkako House"
         ),
         settings.DEFAULT_FROM_EMAIL,
         [quote.email],
@@ -455,7 +460,7 @@ def send_assignment_confirmation_email(ceremony):
         (
             f"Customer: {quote.customer_name}\nPhone: {quote.phone}\n"
             f"Date/time: {quote.event_date} {quote.event_time or ''}\n"
-            f"Location: {quote.location}\nGuests: {quote.guest_count}\n"
+            f"Location: {event_location}\n{access_line}Guests: {quote.guest_count}\n"
         ),
         settings.DEFAULT_FROM_EMAIL,
         [ceremony.assigned_partner.email],
@@ -686,6 +691,7 @@ def fulfill_payment_checkout(checkout, payment_reference=""):
             lambda: notify_payment_received(ceremony, description, checkout.amount)
         )
     return True
+
 
 
 

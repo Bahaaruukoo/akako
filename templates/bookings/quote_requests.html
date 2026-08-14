@@ -57,7 +57,7 @@
             <span><strong>{{ item.customer_name|default:"Contact pending" }}</strong><small>{{ item.email }}</small></span>
             <span>{{ item.get_event_type_display }}<small>{{ item.guest_count }} guests</small></span>
             <span>{{ item.event_date }}{% if item.event_time %}<small>{{ item.event_time }}</small>{% endif %}</span>
-            <span>{{ item.location }}</span>
+            <span>{{ item.event_address|default:item.location }}{% if item.event_address %}<small>Confirmed event address</small>{% endif %}</span>
             <span><mark>{{ item.get_status_display }}</mark>{% if item.pk in answered_availability_quote_ids %}<small class="queue-response-label">Availability answered</small>{% elif item.status == item.Status.NEW %}<small class="queue-new-label">Needs review</small>{% endif %}{% if item.status == item.Status.ACCEPTED and item.ceremony %}<small>Ceremony: {{ item.ceremony.get_status_display|default:"Created" }}</small>{% endif %}</span>
             <span class="table-actions quote-invoice-column">
               {% if item.status == item.Status.ACCEPTED and item.ceremony %}
@@ -84,3 +84,4 @@
   </main>
 </div>
 {% endblock %}
+

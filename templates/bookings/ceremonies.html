@@ -23,7 +23,7 @@
           <div class="table-row ceremony-list-row">
             <span><strong>{{ item.quote.customer_name }}</strong><small>{{ item.quote.email }}</small></span>
             <span>{{ item.quote.event_date }}<small>{{ item.quote.event_time|default:"Time pending" }}</small></span>
-            <span>{{ item.quote.location }}</span>
+            <span>{{ item.quote.event_address|default:item.quote.location }}</span>
             <span><mark>{{ item.get_status_display }}</mark></span>
             <span>{{ item.deposit_payment.get_status_display }}</span>
             <span>{{ item.final_payment.get_status_display }}</span>
@@ -36,3 +36,4 @@
   </main>
 </div>
 {% endblock %}
+

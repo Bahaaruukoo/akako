@@ -31,6 +31,42 @@ def payment_reference_notice(invoice):
     )
 
 
+def zelle_payment_instructions(invoice):
+    return (
+        f"<b>Pay by Zelle</b><br/>"
+        f"Zelle tag: <b>{escape(settings.BUSINESS_ZELLE_TAG)}</b><br/>"
+        f"Recipient: {escape(settings.BUSINESS_LEGAL_NAME)} (confirm this name before sending).<br/>"
+        f"Include invoice number <b>{escape(invoice.number)}</b> in the message.<br/>"
+        "<b>ACH bank transfer:</b> Secure banking instructions are available upon request."
+    )
+
+
+def invoice_bill_to_lines(invoice):
+    """Build the Bill To block from the invoice's persisted billing record."""
+    lines = []
+    contact = invoice.billing_contact_name or invoice.customer_name
+    if invoice.billing_type == "organization":
+        if invoice.organization_name:
+            lines.append(invoice.organization_name)
+        if contact:
+            lines.append(f"Attn: {contact}")
+    elif contact:
+        lines.append(contact)
+    if invoice.customer_email:
+        lines.append(invoice.customer_email)
+    if invoice.billing_address:
+        lines.append(invoice.billing_address)
+    if invoice.purchase_order_number:
+        lines.append(f"PO: {invoice.purchase_order_number}")
+    return lines
+
+
+def invoice_event_location(invoice):
+    """Resolve event location for current and legacy invoice records."""
+    quote = invoice.ceremony.quote
+    return invoice.event_address or quote.event_address or quote.location
+
+
 def build_invoice_pdf(invoice):
     buffer = BytesIO()
     navy, gold, cream, gray = colors.HexColor("#18323D"), colors.HexColor("#C9954A"), colors.HexColor("#F7F3EC"), colors.HexColor("#606B70")
@@ -39,30 +75,28 @@ def build_invoice_pdf(invoice):
     styles.add(ParagraphStyle(name="BodyX", parent=styles["BodyText"], fontSize=9, leading=13, textColor=navy))
     styles.add(ParagraphStyle(name="RightX", parent=styles["BodyText"], fontSize=9, leading=13, alignment=TA_RIGHT, textColor=navy))
     styles.add(ParagraphStyle(name="LabelX", parent=styles["BodyText"], fontName="Helvetica-Bold", fontSize=8, textColor=gold))
+    styles.add(ParagraphStyle(name="PaymentX", parent=styles["BodyText"], fontSize=8, leading=10, textColor=navy))
     p = lambda text, style="BodyX": Paragraph(str(text), styles[style])
     doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=.65*inch, rightMargin=.65*inch, topMargin=.6*inch, bottomMargin=.65*inch, title=f"Invoice {invoice.number}")
     quote = invoice.ceremony.quote
-    story = [Table([[p("AKAKO HOUSE", "BrandX"), p("INVOICE", "RightX")], [p("Ethiopian coffee ceremony service"), p(f"Invoice: {invoice.number}<br/>Issue date: {invoice.issue_date:%B %d, %Y}<br/>Status: {invoice.get_status_display()}", "RightX")]], colWidths=[4.5*inch, 2.7*inch], style=[("VALIGN",(0,0),(-1,-1),"TOP"),("LINEBELOW",(0,-1),(-1,-1),1.5,gold),("BOTTOMPADDING",(0,-1),(-1,-1),12)]), Spacer(1,16)]
-    bill_to = []
-    if invoice.organization_name:
-        bill_to.append(escape(invoice.organization_name))
-    contact = invoice.billing_contact_name or invoice.customer_name
-    if contact:
-        bill_to.append(f"Attn: {escape(contact)}" if invoice.organization_name else escape(contact))
-    bill_to.extend([escape(invoice.customer_email), escape(invoice.billing_address)])
-    if invoice.purchase_order_number:
-        bill_to.append(f"PO: {escape(invoice.purchase_order_number)}")
-    story += [Table([[p("FROM", "LabelX"), p("BILL TO", "LabelX")], [p(f"{escape(settings.BUSINESS_LEGAL_NAME)}<br/>{escape(settings.BUSINESS_PRINCIPAL_ADDRESS)}<br/>support@akakohouse.com<br/>+1 (571) 715-8524"), p("<br/>".join(filter(None, bill_to)))]], colWidths=[3.6*inch,3.6*inch], style=[("VALIGN",(0,0),(-1,-1),"TOP")]), Spacer(1,18)]
-    event = f"Event: {escape(quote.get_event_type_display())}<br/>Date: {quote.event_date:%B %d, %Y}<br/>Location: {escape(quote.location)}<br/>Guests: {quote.guest_count}"
-    story += [Table([[p("EVENT DETAILS", "LabelX")],[p(event)]], colWidths=[7.2*inch], style=[("BACKGROUND",(0,0),(-1,-1),cream),("BOX",(0,0),(-1,-1),.75,gold),("LEFTPADDING",(0,0),(-1,-1),10),("TOPPADDING",(0,0),(-1,-1),8),("BOTTOMPADDING",(0,0),(-1,-1),8)]), Spacer(1,18)]
+    story = [Table([[p("AKAKO HOUSE", "BrandX"), p("INVOICE", "RightX")], [p("Ethiopian coffee ceremony service"), p(f"Invoice: {invoice.number}<br/>Issue date: {invoice.issue_date:%B %d, %Y}<br/>Status: {invoice.get_status_display()}", "RightX")]], colWidths=[4.5*inch, 2.7*inch], style=[("VALIGN",(0,0),(-1,-1),"TOP"),("LINEBELOW",(0,-1),(-1,-1),1.5,gold),("BOTTOMPADDING",(0,-1),(-1,-1),12)]), Spacer(1,12)]
+    bill_to = [escape(value).replace("\n", "<br/>") for value in invoice_bill_to_lines(invoice)]
+    story += [Table([[p("FROM", "LabelX"), p("BILL TO", "LabelX")], [p(f"{escape(settings.BUSINESS_LEGAL_NAME)}<br/>{escape(settings.BUSINESS_PRINCIPAL_ADDRESS)}<br/>support@akakohouse.com<br/>+1 (571) 715-8524"), p("<br/>".join(filter(None, bill_to)))]], colWidths=[3.6*inch,3.6*inch], style=[("VALIGN",(0,0),(-1,-1),"TOP")]), Spacer(1,10)]
+    event = f"Event: {escape(quote.get_event_type_display())}<br/>Date: {quote.event_date:%B %d, %Y}<br/>Location: {escape(invoice_event_location(invoice))}<br/>Guests: {quote.guest_count}"
+    if invoice.event_access_instructions:
+        event += f"<br/>Access notes: {escape(invoice.event_access_instructions)}"
+    story += [Table([[p("EVENT DETAILS", "LabelX")],[p(event)]], colWidths=[7.2*inch], style=[("BACKGROUND",(0,0),(-1,-1),cream),("BOX",(0,0),(-1,-1),.75,gold),("LEFTPADDING",(0,0),(-1,-1),10),("TOPPADDING",(0,0),(-1,-1),8),("BOTTOMPADDING",(0,0),(-1,-1),8)]), Spacer(1,10)]
     story += [Table([[p("DESCRIPTION", "LabelX"), p("AMOUNT", "LabelX")],[p(escape(invoice.description)), p(money(invoice.total_amount), "RightX")]], colWidths=[5.8*inch,1.4*inch], style=[("BACKGROUND",(0,0),(-1,0),navy),("BOX",(0,0),(-1,-1),.75,colors.HexColor("#D8DEE0")),("LEFTPADDING",(0,0),(-1,-1),10),("RIGHTPADDING",(0,0),(-1,-1),10),("TOPPADDING",(0,0),(-1,-1),9),("BOTTOMPADDING",(0,0),(-1,-1),9)]), Spacer(1,12)]
     rows = [[p("Total"), p(money(invoice.total_amount), "RightX")], [p("Payments received"), p(money(invoice.amount_paid), "RightX")], [p("Balance due"), p(money(invoice.balance_due), "RightX")]]
     if invoice.first_payment_amount and not invoice.amount_paid:
         rows.insert(1, [p("First payment due"), p(money(invoice.first_payment_amount), "RightX")])
-    story += [Table(rows, colWidths=[3.1*inch,1.5*inch], hAlign="RIGHT", style=[("LINEABOVE",(0,0),(-1,0),.75,gold),("BACKGROUND",(0,-1),(-1,-1),cream),("BOX",(0,-1),(-1,-1),.75,gold),("LEFTPADDING",(0,0),(-1,-1),9),("RIGHTPADDING",(0,0),(-1,-1),9),("TOPPADDING",(0,0),(-1,-1),7),("BOTTOMPADDING",(0,0),(-1,-1),7)]), Spacer(1,18)]
+    story += [Table(rows, colWidths=[3.1*inch,1.5*inch], hAlign="RIGHT", style=[("LINEABOVE",(0,0),(-1,0),.75,gold),("BACKGROUND",(0,-1),(-1,-1),cream),("BOX",(0,-1),(-1,-1),.75,gold),("LEFTPADDING",(0,0),(-1,-1),9),("RIGHTPADDING",(0,0),(-1,-1),9),("TOPPADDING",(0,0),(-1,-1),7),("BOTTOMPADDING",(0,0),(-1,-1),7)]), Spacer(1,10)]
     due = f"First payment due: {invoice.first_payment_due_date or 'On receipt'}<br/>Remaining balance due: {invoice.balance_due_date or 'As agreed'}"
     reference_notice = payment_reference_notice(invoice)
-    story += [p("PAYMENT DETAILS", "LabelX"), p(due), Spacer(1,6), Table([[p(reference_notice)]], colWidths=[7.2*inch], style=[("BACKGROUND",(0,0),(-1,-1),cream),("BOX",(0,0),(-1,-1),1,gold),("LEFTPADDING",(0,0),(-1,-1),10),("RIGHTPADDING",(0,0),(-1,-1),10),("TOPPADDING",(0,0),(-1,-1),8),("BOTTOMPADDING",(0,0),(-1,-1),8)]), Spacer(1,7), p(escape(invoice.payment_instructions or "Contact Akako House for payment instructions.").replace("\n", "<br/>")), Spacer(1,10)]
+    payment_options = zelle_payment_instructions(invoice)
+    story += [p("PAYMENT DETAILS", "LabelX"), p(due), Spacer(1,6), Table([[p(reference_notice)]], colWidths=[7.2*inch], style=[("BACKGROUND",(0,0),(-1,-1),cream),("BOX",(0,0),(-1,-1),1,gold),("LEFTPADDING",(0,0),(-1,-1),10),("RIGHTPADDING",(0,0),(-1,-1),10),("TOPPADDING",(0,0),(-1,-1),8),("BOTTOMPADDING",(0,0),(-1,-1),8)]), Spacer(1,5), p(payment_options, "PaymentX")]
+    if invoice.payment_instructions:
+        story += [Spacer(1,7), p(escape(invoice.payment_instructions).replace("\n", "<br/>")), Spacer(1,10)]
     if invoice.notes: story += [p("NOTES", "LabelX"), p(escape(invoice.notes).replace("\n", "<br/>"))]
     doc.build(story)
     return buffer.getvalue()
@@ -84,6 +118,8 @@ def invoice_revision_checksum(invoice):
         invoice.billing_contact_name,
         invoice.purchase_order_number,
         invoice.billing_address,
+        invoice_event_location(invoice),
+        invoice.event_access_instructions,
         invoice.description,
         invoice.total_amount,
         invoice.first_payment_amount,
@@ -92,6 +128,8 @@ def invoice_revision_checksum(invoice):
         invoice.balance_due_date,
         invoice.notes,
         invoice.payment_instructions,
+        settings.BUSINESS_LEGAL_NAME,
+        settings.BUSINESS_ZELLE_TAG,
         transaction_snapshot,
     )
     return sha256(repr(snapshot).encode("utf-8")).hexdigest()
@@ -258,6 +296,8 @@ def ensure_invoice_for_ceremony(ceremony, *, created_by=None):
         return existing, False
 
     quote = ceremony.quote
+    if not quote.event_details_complete:
+        raise ValueError("Event location must be confirmed before creating an invoice.")
     if not quote.billing_complete:
         raise ValueError("Billing details must be confirmed before creating an invoice.")
     deposit = ceremony.deposit_payment
@@ -270,6 +310,8 @@ def ensure_invoice_for_ceremony(ceremony, *, created_by=None):
         billing_contact_name=quote.billing_contact_name,
         billing_address=quote.billing_address,
         purchase_order_number=quote.purchase_order_number,
+        event_address=quote.event_address,
+        event_access_instructions=quote.event_access_instructions,
         description=f"{quote.get_event_type_display()} Ethiopian coffee ceremony for {quote.guest_count} guests",
         total_amount=quote.quoted_amount,
         first_payment_amount=quote.deposit_amount or Decimal("0.00"),
@@ -280,6 +322,7 @@ def ensure_invoice_for_ceremony(ceremony, *, created_by=None):
     )
     generate_and_store_invoice(invoice, generated_by=created_by)
     return invoice, True
+
 
 
 

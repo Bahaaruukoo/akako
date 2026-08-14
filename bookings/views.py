@@ -28,6 +28,7 @@ from .forms import (
     CustomerRegistrationForm,
     CustomerReviewForm,
     EventPhotoForm,
+    EventLocationForm,
     FullPaymentForm,
     InvoiceEmailForm,
     InvoiceForm,
@@ -946,17 +947,36 @@ def quote_decision(request, public_id, decision):
     else:
         return HttpResponseBadRequest("Unknown quote decision.")
     if decision == "accept":
+        if not ceremony.quote.event_details_complete:
+            return redirect("ceremony_event_details", public_id=ceremony.public_id)
         if ceremony.quote.billing_complete:
             return redirect("ceremony_payment", public_id=ceremony.public_id)
         return redirect("ceremony_billing_details", public_id=ceremony.public_id)
     return redirect("quote_review", public_id=quote_request.public_id)
 
 
+def ceremony_event_details(request, public_id):
+    ceremony = get_object_or_404(Ceremony.objects.select_related("quote"), public_id=public_id)
+    quote = ceremony.quote
+    if quote.status != QuoteRequest.Status.ACCEPTED:
+        raise Http404("Event details are only available for accepted quotes.")
+    if ceremony.invoices.exclude(status=Invoice.Status.VOID).exists():
+        return redirect("ceremony_payment", public_id=ceremony.public_id)
+    form = EventLocationForm(request.POST or None, instance=quote)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Event location confirmed. Please confirm the invoice details.")
+        return redirect("ceremony_billing_details", public_id=ceremony.public_id)
+    return render(request, "bookings/ceremony_event_details.html", {"ceremony": ceremony, "quote_request": quote, "form": form})
+
 def ceremony_billing_details(request, public_id):
     ceremony = get_object_or_404(Ceremony.objects.select_related("quote"), public_id=public_id)
     quote = ceremony.quote
     if quote.status != QuoteRequest.Status.ACCEPTED:
         raise Http404("Billing confirmation is only available for accepted quotes.")
+    if not quote.event_details_complete and not ceremony.invoices.exclude(status=Invoice.Status.VOID).exists():
+        messages.info(request, "Please confirm the event location before the billing details.")
+        return redirect("ceremony_event_details", public_id=ceremony.public_id)
     if ceremony.invoices.exclude(status=Invoice.Status.VOID).exists():
         messages.info(request, "Billing details have already been confirmed for this invoice.")
         return redirect("ceremony_payment", public_id=ceremony.public_id)
@@ -980,6 +1000,10 @@ def ceremony_payment(request, public_id):
         Ceremony.objects.select_related("quote", "assigned_partner"),
         public_id=public_id,
     )
+    existing_invoice = ceremony.invoices.exclude(status=Invoice.Status.VOID).order_by("created_at").first()
+    if not ceremony.quote.event_details_complete and not existing_invoice:
+        messages.info(request, "Please confirm the event location before viewing payment options.")
+        return redirect("ceremony_event_details", public_id=ceremony.public_id)
     deposit = ceremony.deposit_payment
     final_payment = ceremony.final_payment
     outstanding = sum(
@@ -988,7 +1012,7 @@ def ceremony_payment(request, public_id):
             payment_type__in=[Payment.PaymentType.DEPOSIT, Payment.PaymentType.FINAL]
         ).exclude(status__in=[Payment.Status.PAID, Payment.Status.WAIVED])
     )
-    invoice = ceremony.invoices.exclude(status=Invoice.Status.VOID).order_by("created_at").first()
+    invoice = existing_invoice
     if not invoice:
         try:
             invoice, _created = ensure_invoice_for_ceremony(ceremony)
@@ -1044,6 +1068,9 @@ def start_payment_checkout(request, public_id, choice):
     if request.method != "POST":
         return HttpResponseBadRequest("Checkout must be started from the payment page.")
     has_active_invoice = ceremony.invoices.exclude(status=Invoice.Status.VOID).exists()
+    if not ceremony.quote.event_details_complete and not has_active_invoice:
+        messages.error(request, "Please confirm the event location before making a payment.")
+        return redirect("ceremony_event_details", public_id=ceremony.public_id)
     if not ceremony.quote.billing_complete and not has_active_invoice:
         messages.error(request, "Please confirm the billing details before making a payment.")
         return redirect("ceremony_billing_details", public_id=ceremony.public_id)
@@ -2422,6 +2449,9 @@ def invoice_void(request, public_id):
     generate_and_store_invoice(invoice)
     messages.success(request, f"Invoice {invoice.number} was voided and retained for reference.")
     return redirect("invoice_detail", public_id=invoice.public_id)
+
+
+
 
 
 

@@ -4,12 +4,13 @@
 <div class="app-shell">
   {% include "bookings/_partner_sidebar.html" with active_nav="workspace" %}
   <main class="dashboard">
-    <header class="dashboard-header"><div><p class="eyebrow">Assigned ceremony</p><h1>{{ task.ceremony.quote.event_date }} · {{ task.ceremony.quote.event_time|default:"Time pending" }}</h1><p class="workspace-subtitle">{{ task.ceremony.quote.location }}</p></div><mark>{{ task.get_status_display }}</mark></header>
+    <header class="dashboard-header"><div><p class="eyebrow">Assigned ceremony</p><h1>{{ task.ceremony.quote.event_date }} · {{ task.ceremony.quote.event_time|default:"Time pending" }}</h1><p class="workspace-subtitle">{{ task.ceremony.quote.event_address|default:task.ceremony.quote.location }}</p></div><mark>{{ task.get_status_display }}</mark></header>
     {% if messages %}{% for message in messages %}<p class="notice {{ message.tags }}">{{ message }}</p>{% endfor %}{% endif %}
     <div class="ceremony-grid">
       <section class="work-panel ceremony-main">
         <p class="eyebrow">Service details</p><h2>{{ task.ceremony.quote.get_event_type_display }}</h2>
-        <dl class="success-summary"><div><dt>Customer</dt><dd>{{ task.ceremony.quote.customer_name }}</dd></div><div><dt>Phone</dt><dd>{{ task.ceremony.quote.phone }}</dd></div><div><dt>Guests</dt><dd>{{ task.ceremony.quote.guest_count }}</dd></div><div><dt>Milk</dt><dd>{{ task.ceremony.quote.get_milk_preference_display }}</dd></div><div><dt>Snack service</dt><dd>{{ task.ceremony.quote.get_snack_style_display }}</dd></div><div><dt>Location</dt><dd>{{ task.ceremony.quote.location }}</dd></div></dl>
+        <dl class="success-summary"><div><dt>Customer</dt><dd>{{ task.ceremony.quote.customer_name }}</dd></div><div><dt>Phone</dt><dd>{{ task.ceremony.quote.phone }}</dd></div><div><dt>Guests</dt><dd>{{ task.ceremony.quote.guest_count }}</dd></div><div><dt>Milk</dt><dd>{{ task.ceremony.quote.get_milk_preference_display }}</dd></div><div><dt>Snack service</dt><dd>{{ task.ceremony.quote.get_snack_style_display }}</dd></div><div><dt>Location</dt><dd>{{ task.ceremony.quote.event_address|default:task.ceremony.quote.location }}</dd></div></dl>
+        {% if task.ceremony.quote.event_access_instructions %}<div class="quote-notes"><h3>Arrival and access instructions</h3><p>{{ task.ceremony.quote.event_access_instructions|linebreaksbr }}</p></div>{% endif %}
         {% if task.ceremony.quote.allergies %}<div class="quote-notes"><h3>Allergies and dietary notes</h3><p>{{ task.ceremony.quote.allergies|linebreaksbr }}</p></div>{% endif %}
         <form method="post" action="{% url 'partner_task_update' task.pk %}" class="task-status-form">{% csrf_token %}
           <label>Work notes<textarea name="partner_notes" rows="3">{{ task.partner_notes }}</textarea></label>
@@ -28,3 +29,5 @@
   </main>
 </div>
 {% endblock %}
+
+

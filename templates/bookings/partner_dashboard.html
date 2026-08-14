@@ -22,8 +22,9 @@
       </div>
     </section>
 
-    <section class="work-panel"><div class="section-heading"><div><p class="eyebrow">My work</p><h2>Assigned ceremonies</h2></div></div><div class="partner-task-list">{% for task in tasks %}<a class="partner-task-card" href="{% url 'partner_task_detail' task.pk %}"><span><strong>{{ task.ceremony.quote.event_date }} · {{ task.ceremony.quote.event_time|default:"Time pending" }}</strong><small>{{ task.ceremony.quote.location }}</small></span><mark>{{ task.get_status_display }}</mark></a>{% empty %}<p class="empty-state">No ceremonies are assigned yet.</p>{% endfor %}</div></section>
+    <section class="work-panel"><div class="section-heading"><div><p class="eyebrow">My work</p><h2>Assigned ceremonies</h2></div></div><div class="partner-task-list">{% for task in tasks %}<a class="partner-task-card" href="{% url 'partner_task_detail' task.pk %}"><span><strong>{{ task.ceremony.quote.event_date }} · {{ task.ceremony.quote.event_time|default:"Time pending" }}</strong><small>{{ task.ceremony.quote.event_address|default:task.ceremony.quote.location }}</small></span><mark>{{ task.get_status_display }}</mark></a>{% empty %}<p class="empty-state">No ceremonies are assigned yet.</p>{% endfor %}</div></section>
     <section class="work-panel"><div class="section-heading"><div><p class="eyebrow">Compensation</p><h2>Recent payout records</h2></div></div><div class="payout-list">{% for payout in recent_payouts %}<article><span><strong>${{ payout.amount|floatformat:2 }}</strong><small>{{ payout.task.ceremony.quote.event_date }} ceremony</small></span><mark>{{ payout.get_status_display }}</mark></article>{% empty %}<p class="empty-state">Payout records appear when a task is assigned.</p>{% endfor %}</div></section>
   </main>
 </div>
 {% endblock %}
+

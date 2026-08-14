@@ -309,12 +309,13 @@ def notify_payment_received(ceremony, description, amount):
 
 def notify_assignment(ceremony):
     quote, partner = ceremony.quote, ceremony.assigned_partner
+    event_location = quote.event_address or quote.location
     if not partner:
         return
     create_notification(
         kind=Notification.Kind.PARTNER_ASSIGNED,
         title="New ceremony assignment",
-        message=f"You were assigned to {quote.event_date} at {quote.location}.",
+        message=f"You were assigned to {quote.event_date} at {event_location}.",
         event_key=f"ceremony:{ceremony.pk}:partner:{partner.pk}:assigned",
         recipient=partner.user,
         email_address=partner.email,
@@ -407,10 +408,11 @@ def notify_final_payment_reminder(ceremony, hours):
 
 def notify_ceremony_reminder_records(ceremony):
     quote = ceremony.quote
+    event_location = quote.event_address or quote.location
     create_notification(
         kind=Notification.Kind.CEREMONY_REMINDER,
         title="Your ceremony is coming up",
-        message=f"Your Akako House ceremony is scheduled for {quote.event_date} at {quote.location}.",
+        message=f"Your Akako House ceremony is scheduled for {quote.event_date} at {event_location}.",
         event_key=f"ceremony:{ceremony.pk}:reminder:customer",
         recipient=quote_customer_user(quote),
         email_address=quote.email,
@@ -422,7 +424,7 @@ def notify_ceremony_reminder_records(ceremony):
         create_notification(
             kind=Notification.Kind.CEREMONY_REMINDER,
             title="Upcoming ceremony assignment",
-            message=f"Your assignment is scheduled for {quote.event_date} at {quote.location}.",
+            message=f"Your assignment is scheduled for {quote.event_date} at {event_location}.",
             event_key=f"ceremony:{ceremony.pk}:reminder:partner:{partner.pk}",
             recipient=partner.user,
             email_address=partner.email,
@@ -464,3 +466,5 @@ def notify_document_expired(document):
         event_key=f"partner-document:{document.pk}:expired:staff",
         action_url=reverse("manage_partner", args=[partner.pk]),
     )
+
+

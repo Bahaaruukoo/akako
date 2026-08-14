@@ -627,9 +627,11 @@ class CeremonyOutcomeForm(forms.Form):
 class InvoiceForm(forms.ModelForm):
     class Meta:
         model = Invoice
-        fields = ["ceremony", "billing_type", "organization_name", "billing_contact_name", "customer_name", "customer_email", "billing_address", "purchase_order_number", "description", "total_amount", "first_payment_amount", "issue_date", "first_payment_due_date", "balance_due_date", "payment_instructions", "notes"]
+        fields = ["ceremony", "billing_type", "organization_name", "billing_contact_name", "customer_name", "customer_email", "billing_address", "purchase_order_number", "event_address", "event_access_instructions", "description", "total_amount", "first_payment_amount", "issue_date", "first_payment_due_date", "balance_due_date", "payment_instructions", "notes"]
         widgets = {
             "billing_address": forms.Textarea(attrs={"rows": 2}),
+            "event_address": forms.Textarea(attrs={"rows": 2}),
+            "event_access_instructions": forms.Textarea(attrs={"rows": 2}),
             "payment_instructions": forms.Textarea(attrs={"rows": 3}),
             "notes": forms.Textarea(attrs={"rows": 3}),
             "issue_date": forms.DateInput(attrs={"type": "date"}),
@@ -682,6 +684,24 @@ class BillingDetailsForm(forms.ModelForm):
             data["purchase_order_number"] = ""
         return data
 
+class EventLocationForm(forms.ModelForm):
+    class Meta:
+        model = QuoteRequest
+        fields = ["event_address", "event_access_instructions"]
+        labels = {
+            "event_address": "Complete event address",
+            "event_access_instructions": "Suite, floor, parking, loading, or building-access instructions (optional)",
+        }
+        widgets = {
+            "event_address": forms.Textarea(attrs={"rows": 3, "autocomplete": "street-address"}),
+            "event_access_instructions": forms.Textarea(attrs={"rows": 4}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.is_bound and self.instance and not self.instance.event_address:
+            self.initial["event_address"] = self.instance.location
+
 class InvoiceTransactionForm(forms.ModelForm):
     class Meta:
         model = InvoiceTransaction
@@ -693,6 +713,8 @@ class InvoiceEmailForm(forms.Form):
     recipient = forms.EmailField()
     subject = forms.CharField(max_length=240)
     body = forms.CharField(widget=forms.Textarea(attrs={"rows": 12}))
+
+
 
 
 

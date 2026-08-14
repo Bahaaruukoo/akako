@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Confirm Event Location | Akako House{% endblock %}
+
+{% block content %}
+<main class="quote-flow-page">
+  <section class="quote-flow-panel">
+    <a class="mini-brand" href="{% url 'home' %}">Akako <span>House</span></a>
+    {% if messages %}<div class="messages">{% for message in messages %}<p>{{ message }}</p>{% endfor %}</div>{% endif %}
+    <p class="eyebrow">Accepted quote</p>
+    <h1>Where will the ceremony take place?</h1>
+    <p>Confirm the complete service address so the Cultural Ambassador can arrive and set up without delay. This may be different from your billing address.</p>
+    <form method="post" class="quote-editor">
+      {% csrf_token %}
+      {% if form.non_field_errors %}<p class="notice error">{{ form.non_field_errors }}</p>{% endif %}
+      <div class="form-grid">
+        {% for field in form %}
+          <label class="full-span">{{ field.label }}{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{{ field.errors }}</label>
+        {% endfor %}
+      </div>
+      <button class="button primary" type="submit">Confirm Event Location</button>
+    </form>
+  </section>
+</main>
+{% endblock %}

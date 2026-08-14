@@ -42,7 +42,7 @@ from .models import (
     ShopInterest,
     Testimonial,
 )
-from .invoice_service import build_invoice_pdf, build_payment_receipt_pdf, generate_and_store_invoice, payment_receipt_number, payment_reference_notice
+from .invoice_service import build_invoice_pdf, build_payment_receipt_pdf, generate_and_store_invoice, invoice_bill_to_lines, invoice_event_location, payment_receipt_number, payment_reference_notice, zelle_payment_instructions
 from .services import (
     accept_availability_offer,
     partner_conflict_reason,
@@ -569,9 +569,15 @@ class BookingFlowTests(TestCase):
             service_area="Bethesda",
         )
         ceremony = self.create_ceremony()
+        ceremony.quote.event_address = "900 Assigned Avenue, Suite 210, Bethesda, MD 20814"
+        ceremony.quote.event_access_instructions = "Use the south entrance and call reception."
+        ceremony.quote.save(update_fields=["event_address", "event_access_instructions", "updated_at"])
         task = PartnerTask.objects.create(ceremony=ceremony, partner=partner)
         PartnerPayout.objects.create(task=task, partner=partner, amount=Decimal("175.00"))
         self.client.force_login(user)
+        detail = self.client.get(reverse("partner_task_detail", args=[task.pk]))
+        self.assertContains(detail, "900 Assigned Avenue")
+        self.assertContains(detail, "south entrance")
 
         for status in [
             PartnerTask.Status.ACCEPTED,
@@ -1228,8 +1234,14 @@ class BookingFlowTests(TestCase):
         )
 
         quote_request.refresh_from_db()
+        event_url = reverse("ceremony_event_details", kwargs={"public_id": quote_request.ceremony.public_id})
         billing_url = reverse("ceremony_billing_details", kwargs={"public_id": quote_request.ceremony.public_id})
-        self.assertRedirects(response, billing_url)
+        self.assertRedirects(response, event_url)
+        event_confirmation = self.client.post(event_url, {
+            "event_address": "500 Office Plaza, Suite 400, Washington, DC 20001",
+            "event_access_instructions": "Use the loading entrance and check in at reception.",
+        })
+        self.assertRedirects(event_confirmation, billing_url)
         self.assertEqual(quote_request.status, QuoteRequest.Status.ACCEPTED)
         self.assertEqual(quote_request.ceremony.invoices.count(), 0)
         billing_page = self.client.get(billing_url)
@@ -1304,8 +1316,14 @@ class BookingFlowTests(TestCase):
         response = self.client.post(reverse("quote_decision", args=[quote.public_id, "accept"]), {"policy_consent": "on"})
         quote.refresh_from_db()
         ceremony = quote.ceremony
+        event_url = reverse("ceremony_event_details", args=[ceremony.public_id])
         billing_url = reverse("ceremony_billing_details", args=[ceremony.public_id])
-        self.assertRedirects(response, billing_url)
+        self.assertRedirects(response, event_url)
+        event_confirmation = self.client.post(event_url, {
+            "event_address": "500 Corporate Avenue, Floor 3, Washington, DC 20001",
+            "event_access_instructions": "Check in with the front desk.",
+        })
+        self.assertRedirects(event_confirmation, billing_url)
         self.assertEqual(ceremony.invoices.count(), 0)
         billing_page = self.client.get(billing_url)
         self.assertContains(billing_page, "Confirm your invoice details")
@@ -1323,6 +1341,8 @@ class BookingFlowTests(TestCase):
         self.assertEqual(invoice.organization_name, "Example Corporation")
         self.assertEqual(invoice.customer_email, "ap@example.com")
         self.assertEqual(invoice.purchase_order_number, "PO-1007")
+        self.assertEqual(invoice.event_address, "500 Corporate Avenue, Floor 3, Washington, DC 20001")
+        self.assertIn("front desk", invoice.event_access_instructions)
         payment_page = self.client.get(reverse("ceremony_payment", args=[ceremony.public_id]))
         self.assertContains(payment_page, invoice.number)
         self.assertContains(payment_page, reverse("ceremony_invoice_download", args=[ceremony.public_id]))
@@ -1338,7 +1358,8 @@ class BookingFlowTests(TestCase):
         quote.billing_contact_name = quote.customer_name
         quote.billing_email = quote.email
         quote.billing_address = "12 Main Street, Richmond, VA 23219"
-        quote.save(update_fields=["billing_contact_name", "billing_email", "billing_address", "updated_at"])
+        quote.event_address = "500 Event Street, Richmond, VA 23219"
+        quote.save(update_fields=["billing_contact_name", "billing_email", "billing_address", "event_address", "updated_at"])
         page = self.client.get(reverse("ceremony_payment", args=[ceremony.public_id]))
         self.assertEqual(page.status_code, 200)
         invoice = ceremony.invoices.get()
@@ -1354,6 +1375,17 @@ class BookingFlowTests(TestCase):
         legacy_payment_page = self.client.get(reverse("ceremony_payment", args=[ceremony.public_id]))
         self.assertNotContains(legacy_payment_page, "Confirm Billing Details")
         self.assertContains(legacy_payment_page, invoice.number)
+    def test_quote_request_list_prefers_confirmed_event_address(self):
+        quote = QuoteRequest.objects.create(
+            customer_name="Location Customer", email="location@example.com", phone="555-0111",
+            event_type=QuoteRequest.EventType.CORPORATE, event_date=date(2026, 10, 10),
+            location="20175", event_address="500 Confirmed Avenue, Suite 10, Leesburg, VA 20175",
+            guest_count=30,
+        )
+        response = self.client.get(reverse("quote_requests"))
+        self.assertContains(response, "500 Confirmed Avenue")
+        self.assertContains(response, "Confirmed event address")
+        self.assertNotContains(response, ">20175</span>", html=False)
     def test_quote_email_contains_review_link(self):
         quote_request = QuoteRequest.objects.create(
             customer_name="Aster Bekele",
@@ -1729,6 +1761,9 @@ class BookingFlowTests(TestCase):
 
     def test_customer_payment_page_offers_deposit_or_full_payment(self):
         ceremony = self.create_ceremony(deposit=Decimal("150.00"))
+        quote = ceremony.quote
+        quote.event_address = "500 Event Street, Richmond, VA 23219"
+        quote.save(update_fields=["event_address", "updated_at"])
 
         response = self.client.get(reverse("ceremony_payment", args=[ceremony.public_id]))
 
@@ -1746,7 +1781,8 @@ class BookingFlowTests(TestCase):
         quote.billing_contact_name = quote.customer_name
         quote.billing_email = quote.email
         quote.billing_address = "12 Main Street, Richmond, VA 23219"
-        quote.save(update_fields=["billing_contact_name", "billing_email", "billing_address", "updated_at"])
+        quote.event_address = "500 Event Street, Richmond, VA 23219"
+        quote.save(update_fields=["billing_contact_name", "billing_email", "billing_address", "event_address", "updated_at"])
         create_session.return_value = {
             "id": "cs_test_full_001",
             "url": "https://checkout.example/session/full-001",
@@ -1891,7 +1927,9 @@ class BookingFlowTests(TestCase):
         target = timezone.localtime(timezone.now() + timezone.timedelta(hours=12))
         ceremony.quote.event_date = target.date()
         ceremony.quote.event_time = target.time().replace(second=0, microsecond=0)
-        ceremony.quote.save(update_fields=["event_date", "event_time", "updated_at"])
+        ceremony.quote.event_address = "700 Reminder Road, Floor 4, Rockville, MD 20850"
+        ceremony.quote.event_access_instructions = "Park in Garage B and check in at security."
+        ceremony.quote.save(update_fields=["event_date", "event_time", "event_address", "event_access_instructions", "updated_at"])
         partner_user = get_user_model().objects.create_user(
             email="reminder-partner@example.com", password="test-password"
         )
@@ -1927,6 +1965,8 @@ class BookingFlowTests(TestCase):
             message for message in mail.outbox if "coming up" in message.subject.lower() or "upcoming" in message.subject.lower()
         ]
         self.assertEqual(len(reminder_messages), 2)
+        self.assertTrue(all("700 Reminder Road" in message.body for message in reminder_messages))
+        self.assertTrue(all("Garage B" in message.body for message in reminder_messages))
 
     def test_cancelled_ceremony_preserves_deposit_and_allows_refund_disposition(self):
         ceremony = self.create_ceremony(deposit=Decimal("150.00"))
@@ -2239,6 +2279,40 @@ class InvoiceFeatureTests(TestCase):
         notice = payment_reference_notice(self.invoice)
         self.assertIn("Required payment reference", notice)
         self.assertIn(self.invoice.number, notice)
+        payment_options = zelle_payment_instructions(self.invoice)
+        self.assertIn("PayAkakoHouse", payment_options)
+        self.assertIn("Akako House LLC", payment_options)
+        self.assertIn("ACH bank transfer", payment_options)
+        self.assertIn("available upon request", payment_options)
+        self.assertIn(self.invoice.number, payment_options)
+
+    def test_invoice_bill_to_uses_saved_individual_or_organization_details(self):
+        self.invoice.billing_type = QuoteRequest.BillingType.INDIVIDUAL
+        self.invoice.organization_name = "Stale Organization"
+        self.invoice.billing_contact_name = "Aster Legal Bekele"
+        self.invoice.billing_address = "12 Main Street\nSilver Spring, MD 20910"
+        self.assertEqual(
+            invoice_bill_to_lines(self.invoice),
+            ["Aster Legal Bekele", "client@example.com", "12 Main Street\nSilver Spring, MD 20910"],
+        )
+
+        self.invoice.billing_type = QuoteRequest.BillingType.ORGANIZATION
+        self.invoice.organization_name = "Real Customer Corporation"
+        self.invoice.billing_contact_name = "Foziya Ahmed"
+        self.assertEqual(
+            invoice_bill_to_lines(self.invoice)[:2],
+            ["Real Customer Corporation", "Attn: Foziya Ahmed"],
+        )
+
+    def test_invoice_location_falls_back_to_quote_database_fields(self):
+        quote = self.invoice.ceremony.quote
+        self.invoice.event_address = ""
+        quote.event_address = "500 Confirmed Avenue, Richmond, VA 23219"
+        self.assertEqual(invoice_event_location(self.invoice), quote.event_address)
+
+        quote.event_address = ""
+        quote.location = "Richmond, VA 23219"
+        self.assertEqual(invoice_event_location(self.invoice), quote.location)
 
     def test_partial_payment_updates_status_and_balance(self):
         InvoiceTransaction.objects.create(invoice=self.invoice, amount=Decimal("400.00"), method=InvoiceTransaction.Method.ZELLE, recorded_by=self.staff)
@@ -2384,10 +2458,15 @@ class InvoiceFeatureTests(TestCase):
         self.assertTrue(self.ceremony.milestones.filter(stage=BookingMilestone.Stage.PAID_IN_FULL).exists())
 
     def test_staff_workspace_displays_booking_progress(self):
+        self.ceremony.quote.event_address = "800 Operations Way, Suite 3, Washington, DC 20001"
+        self.ceremony.quote.event_access_instructions = "Loading dock is behind the building."
+        self.ceremony.quote.save(update_fields=["event_address", "event_access_instructions", "updated_at"])
         response = self.client.get(reverse("ceremony_detail", args=[self.ceremony.public_id]))
         self.assertContains(response, "Booking progress")
         self.assertContains(response, "Initial payment pending")
         self.assertContains(response, "Booking confirmed")
+        self.assertContains(response, "800 Operations Way")
+        self.assertContains(response, "Loading dock")
     def test_central_finance_manager_has_invoice_payment_and_receipt_tabs(self):
         self.client.post(
             reverse("invoice_add_transaction", args=[self.invoice.public_id]),
@@ -2429,6 +2508,10 @@ class InvoiceFeatureTests(TestCase):
         self.client.logout()
         response = self.client.get(reverse("invoice_download", args=[self.invoice.public_id]))
         self.assertEqual(response.status_code, 302)
+
+
+
+
 
 
 

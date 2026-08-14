@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block title %}Ceremony Workspace | Akako House{% endblock %}
 
@@ -7,7 +7,7 @@
   {% include "bookings/_dashboard_sidebar.html" with active_nav="ceremonies" %}
   <main class="dashboard ceremony-workspace">
     <header class="dashboard-header">
-      <div><p class="eyebrow">Ceremony workspace</p><h1>{{ quote_request.customer_name }}</h1><p class="workspace-subtitle">{{ quote_request.event_date }}{% if quote_request.event_time %} at {{ quote_request.event_time }}{% endif %} · {{ quote_request.location }}</p></div>
+      <div><p class="eyebrow">Ceremony workspace</p><h1>{{ quote_request.customer_name }}</h1><p class="workspace-subtitle">{{ quote_request.event_date }}{% if quote_request.event_time %} at {{ quote_request.event_time }}{% endif %} · {{ quote_request.event_address|default:quote_request.location }}</p></div>
       <a class="button secondary" href="{% url 'manage_quote' quote_request.public_id %}">View Accepted Quote</a>
     </header>
     {% if messages %}<div class="messages workspace-messages">{% for message in messages %}<p>{{ message }}</p>{% endfor %}</div>{% endif %}
@@ -17,6 +17,8 @@
     <section class="ceremony-stage-banner"><span>Current stage</span><strong>{{ ceremony.get_status_display }}</strong>{% if ceremony.outcome_reason %}<small>{{ ceremony.get_outcome_reason_display }}</small>{% endif %}</section>
 
     {% include "bookings/_booking_progress.html" %}
+
+    <section class="work-panel"><p class="eyebrow">Service location</p><h2>{{ quote_request.event_address|default:quote_request.location }}</h2>{% if quote_request.event_access_instructions %}<div class="quote-notes"><h3>Arrival and access instructions</h3><p>{{ quote_request.event_access_instructions|linebreaksbr }}</p></div>{% endif %}</section>
 
     <div class="ceremony-grid">
       <section class="work-panel ceremony-main">
@@ -98,5 +100,7 @@
   </main>
 </div>
 {% endblock %}
+
+
 
 

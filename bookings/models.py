@@ -353,6 +353,8 @@ class QuoteRequest(models.Model):
     setup_buffer_minutes = models.PositiveIntegerField(default=30)
     cleanup_buffer_minutes = models.PositiveIntegerField(default=30)
     location = models.CharField(max_length=220, help_text="Address, city, or ZIP")
+    event_address = models.TextField(blank=True)
+    event_access_instructions = models.TextField(blank=True)
     guest_count = models.PositiveIntegerField()
     indoor = models.BooleanField(default=True)
     milk_preference = models.CharField(
@@ -397,6 +399,10 @@ class QuoteRequest(models.Model):
         if self.billing_type == self.BillingType.ORGANIZATION:
             return bool(self.organization_name and self.billing_contact_name and self.billing_email and self.billing_address)
         return bool(self.billing_contact_name and self.billing_email and self.billing_address)
+
+    @property
+    def event_details_complete(self):
+        return bool(self.event_address.strip())
 
     def event_datetime(self):
         value = datetime.combine(self.event_date, self.event_time or time(0, 0))
@@ -1128,6 +1134,8 @@ class Invoice(models.Model):
     billing_contact_name = models.CharField(max_length=160, blank=True)
     purchase_order_number = models.CharField(max_length=80, blank=True)
     billing_address = models.TextField(blank=True)
+    event_address = models.TextField(blank=True)
+    event_access_instructions = models.TextField(blank=True)
     description = models.CharField(max_length=240, default="Corporate event coffee service")
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     first_payment_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -1268,5 +1276,8 @@ class PaymentReceipt(models.Model):
 
     def __str__(self):
         return f"{self.number or 'Receipt'} - {self.transaction.invoice.number}"
+
+
+
 
 

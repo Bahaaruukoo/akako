@@ -15,7 +15,7 @@
     <p class="payment-intro">{{ quote_request.customer_name }}, your ceremony is scheduled for {{ quote_request.event_date }}. You may reserve it with the deposit or settle the complete balance now.</p>
 
     {% if billing_required %}
-      <section class="payment-invoice-card"><div><p class="eyebrow">Billing details required</p><h2>Confirm who should receive the invoice</h2><p>Your invoice and payment email will be created after the company billing information is confirmed.</p></div><a class="button primary" href="{% url 'ceremony_billing_details' ceremony.public_id %}">Confirm Billing Details</a></section>
+      <section class="payment-invoice-card"><div><p class="eyebrow">Billing details required</p><h2>Confirm who should receive the invoice</h2><p>Your invoice and payment email will be created after the billing information is confirmed.</p></div><a class="button primary" href="{% url 'ceremony_billing_details' ceremony.public_id %}">Confirm Billing Details</a></section>
     {% endif %}
     {% if invoice %}
       <section class="payment-invoice-card">
@@ -47,4 +47,5 @@
   </section>
 </main>
 {% endblock %}
+
 
