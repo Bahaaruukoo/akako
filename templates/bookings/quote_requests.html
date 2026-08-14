@@ -50,7 +50,7 @@
 
       <div class="table">
         <div class="table-row quote-list-row table-head">
-          <span>Customer</span><span>Event</span><span>Date</span><span>Location</span><span>Quote</span><span>Ceremony</span><span>Action</span>
+          <span>Customer</span><span>Event</span><span>Date</span><span>Location</span><span>Quote</span><span class="quote-invoice-column">Invoice / Preview</span><span class="quote-action-column">Action</span>
         </div>
         {% for item in quote_requests %}
           <div class="table-row quote-list-row">
@@ -58,16 +58,22 @@
             <span>{{ item.get_event_type_display }}<small>{{ item.guest_count }} guests</small></span>
             <span>{{ item.event_date }}{% if item.event_time %}<small>{{ item.event_time }}</small>{% endif %}</span>
             <span>{{ item.location }}</span>
-            <span><mark>{{ item.get_status_display }}</mark>{% if item.pk in answered_availability_quote_ids %}<small class="queue-response-label">Availability answered</small>{% elif item.status == item.Status.NEW %}<small class="queue-new-label">Needs review</small>{% endif %}</span>
-            <span>{% if item.status == item.Status.ACCEPTED %}{{ item.ceremony.get_status_display|default:"Created" }}{% else %}—{% endif %}</span>
-            <span class="table-actions">
+            <span><mark>{{ item.get_status_display }}</mark>{% if item.pk in answered_availability_quote_ids %}<small class="queue-response-label">Availability answered</small>{% elif item.status == item.Status.NEW %}<small class="queue-new-label">Needs review</small>{% endif %}{% if item.status == item.Status.ACCEPTED and item.ceremony %}<small>Ceremony: {{ item.ceremony.get_status_display|default:"Created" }}</small>{% endif %}</span>
+            <span class="table-actions quote-invoice-column">
+              {% if item.status == item.Status.ACCEPTED and item.ceremony %}
+                {% with invoice=item.ceremony.invoices.first %}
+                  {% if invoice %}<a class="table-link" href="{% url 'invoice_detail' invoice.public_id %}">View Invoice</a>{% else %}<a class="table-link" href="{% url 'invoice_create' %}?ceremony={{ item.ceremony.public_id }}">Create Invoice</a>{% endif %}
+                {% endwith %}
+              {% endif %}
+              <a class="table-link muted" href="{% url 'quote_review' item.public_id %}" target="_blank">Customer Preview</a>
+            </span>
+            <span class="table-actions quote-action-column">
               {% if item.status == item.Status.ACCEPTED and item.ceremony %}
                 <a class="table-link" href="{% url 'ceremony_detail' item.ceremony.public_id %}">Open Ceremony</a>
                 <a class="table-link muted" href="{% url 'manage_quote' item.public_id %}">View Frozen Quote</a>
               {% else %}
                 <a class="table-link" href="{% url 'manage_quote' item.public_id %}">{% if item.quoted_amount %}Edit Quote{% else %}Prepare Quote{% endif %}</a>
               {% endif %}
-              <a class="table-link muted" href="{% url 'quote_review' item.public_id %}" target="_blank">Customer Preview</a>
             </span>
           </div>
         {% empty %}

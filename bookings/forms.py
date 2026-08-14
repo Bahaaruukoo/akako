@@ -1,4 +1,4 @@
-from django import forms
+﻿from django import forms
 from allauth.account.forms import SignupForm
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -14,6 +14,8 @@ from .models import (
     CustomerProfile,
     CustomerReview,
     EventPhoto,
+    Invoice,
+    InvoiceTransaction,
     Partner,
     PartnerAvailability,
     PartnerDocument,
@@ -571,6 +573,7 @@ class PartnerAssignmentForm(forms.Form):
 
 
 class PaymentRecordForm(forms.Form):
+    method = forms.ChoiceField(choices=InvoiceTransaction.Method.choices, required=False, initial=InvoiceTransaction.Method.OTHER)
     received_amount = forms.DecimalField(min_value=Decimal("0.01"), max_digits=8, decimal_places=2)
     provider_reference = forms.CharField(max_length=120, required=False)
     notes = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 2}))
@@ -590,6 +593,7 @@ class PaymentRecordForm(forms.Form):
 
 
 class FullPaymentForm(forms.Form):
+    method = forms.ChoiceField(choices=InvoiceTransaction.Method.choices, required=False, initial=InvoiceTransaction.Method.OTHER)
     received_amount = forms.DecimalField(min_value=Decimal("0.01"), max_digits=8, decimal_places=2)
     provider_reference = forms.CharField(max_length=120, required=False)
     notes = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 2}))
@@ -619,3 +623,41 @@ class CeremonyOutcomeForm(forms.Form):
         widget=forms.Textarea(attrs={"rows": 3}),
         help_text="Record what happened for the permanent history.",
     )
+
+class InvoiceForm(forms.ModelForm):
+    class Meta:
+        model = Invoice
+        fields = ["ceremony", "customer_name", "customer_email", "billing_address", "description", "total_amount", "first_payment_amount", "issue_date", "first_payment_due_date", "balance_due_date", "payment_instructions", "notes"]
+        widgets = {
+            "billing_address": forms.Textarea(attrs={"rows": 2}),
+            "payment_instructions": forms.Textarea(attrs={"rows": 3}),
+            "notes": forms.Textarea(attrs={"rows": 3}),
+            "issue_date": forms.DateInput(attrs={"type": "date"}),
+            "first_payment_due_date": forms.DateInput(attrs={"type": "date"}),
+            "balance_due_date": forms.DateInput(attrs={"type": "date"}),
+        }
+
+    def clean(self):
+        data = super().clean()
+        total, first = data.get("total_amount"), data.get("first_payment_amount")
+        if total is not None and total <= 0:
+            self.add_error("total_amount", "Invoice total must be greater than zero.")
+        if total is not None and first is not None and first > total:
+            self.add_error("first_payment_amount", "First payment cannot exceed the invoice total.")
+        return data
+
+
+class InvoiceTransactionForm(forms.ModelForm):
+    class Meta:
+        model = InvoiceTransaction
+        fields = ["amount", "received_on", "method", "reference", "notes"]
+        widgets = {"received_on": forms.DateInput(attrs={"type": "date"}), "notes": forms.Textarea(attrs={"rows": 2})}
+
+
+class InvoiceEmailForm(forms.Form):
+    recipient = forms.EmailField()
+    subject = forms.CharField(max_length=240)
+    body = forms.CharField(widget=forms.Textarea(attrs={"rows": 12}))
+
+
+

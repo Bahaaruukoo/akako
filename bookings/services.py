@@ -1,4 +1,4 @@
-from datetime import datetime
+﻿from datetime import datetime
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -20,6 +20,7 @@ from .models import (
     PaymentCheckout,
     QuoteRequest,
     Notification,
+    InvoiceTransaction,
 )
 from .notifications import (
     notify_assignment,
@@ -33,6 +34,23 @@ from .notifications import (
     notify_quote_expired,
 )
 
+
+def _send_official_receipt_safely(transaction_id):
+    """Webhook post-commit delivery must never cause provider retries or duplicate receipts."""
+    from .booking_progress import booking_progress
+    from .invoice_service import send_payment_receipt_email
+
+    try:
+        item = InvoiceTransaction.objects.select_related("invoice__ceremony").get(pk=transaction_id)
+        progress = booking_progress(item.invoice.ceremony)
+        booking_status = next(
+            (step["label"] for step in progress if step["current"]),
+            item.invoice.ceremony.get_status_display(),
+        )
+        send_payment_receipt_email(item.invoice, item, booking_status=booking_status)
+    except Exception:
+        return False
+    return True
 
 ACTIVE_HOLD_STATUSES = [
     CapacityHold.Status.TEMPORARY,
@@ -584,15 +602,17 @@ def fulfill_payment_checkout(checkout, payment_reference=""):
         raise ValueError("A completed ceremony cannot accept checkout fulfillment.")
 
     if checkout.payment_choice == PaymentCheckout.Choice.FULL:
-        payments = ceremony.payments.filter(
+        payments = list(ceremony.payments.filter(
             payment_type__in=[Payment.PaymentType.DEPOSIT, Payment.PaymentType.FINAL]
-        ).exclude(status__in=[Payment.Status.PAID, Payment.Status.WAIVED])
+        ).exclude(status__in=[Payment.Status.PAID, Payment.Status.WAIVED]))
     else:
-        payments = ceremony.payments.filter(payment_type=checkout.payment_choice).exclude(
+        payments = list(ceremony.payments.filter(payment_type=checkout.payment_choice).exclude(
             status__in=[Payment.Status.PAID, Payment.Status.WAIVED]
-        )
+        ))
 
     now = timezone.now()
+    from .booking_progress import record_linked_invoice_transaction
+    linked_transaction = record_linked_invoice_transaction(ceremony, amount=checkout.amount, method=InvoiceTransaction.Method.CARD, reference=payment_reference or checkout.provider_session_id, notes="Confirmed by signed Stripe webhook.", received_on=timezone.localdate())
     settled = []
     for payment in payments:
         payment.status = Payment.Status.PAID
@@ -628,12 +648,17 @@ def fulfill_payment_checkout(checkout, payment_reference=""):
     checkout.save(
         update_fields=["status", "provider_payment_reference", "completed_at", "updated_at"]
     )
+    from .booking_progress import sync_booking_milestones
+    sync_booking_milestones(ceremony, source="stripe_checkout")
     if settled:
         description = "paid in full" if checkout.payment_choice == PaymentCheckout.Choice.FULL else settled[0]
-        transaction.on_commit(
-            lambda: send_payment_confirmation_email(ceremony, description, checkout.amount)
-        )
+        if linked_transaction:
+            transaction.on_commit(lambda item_id=linked_transaction.pk: _send_official_receipt_safely(item_id))
+        else:
+            transaction.on_commit(lambda: send_payment_confirmation_email(ceremony, description, checkout.amount))
         transaction.on_commit(
             lambda: notify_payment_received(ceremony, description, checkout.amount)
         )
     return True
+
+

@@ -7,6 +7,7 @@
     <a{% if active_nav == 'content' %} class="active"{% endif %} href="{% url 'content_library' %}"><span>Content &amp; Reviews</span>{% if pending_content_count %}<span class="nav-alert-badge">{{ pending_content_count }}</span>{% endif %}</a>
     {% if perms.bookings.view_quoterequest %}<a{% if active_nav == 'quotes' %} class="active"{% endif %} href="{% url 'quote_requests' %}"><span>Quote Requests</span>{% if quote_attention_count %}<span class="nav-alert-badge" aria-label="{{ quote_attention_count }} quote request{{ quote_attention_count|pluralize }} need attention">{{ quote_attention_count }}</span>{% endif %}</a>{% endif %}
     {% if perms.bookings.view_ceremony %}<a{% if active_nav == 'ceremonies' %} class="active"{% endif %} href="{% url 'ceremonies' %}">Ceremonies</a>{% endif %}
+    <a{% if active_nav == 'invoices' %} class="active"{% endif %} href="{% url 'invoice_list' %}">Invoices &amp; Payments</a>
     {% if perms.bookings.view_partner %}<a{% if active_nav == 'partners' %} class="active"{% endif %} href="{% url 'partners' %}"><span>Partners</span>{% if pending_partner_document_count %}<span class="nav-alert-badge" aria-label="{{ pending_partner_document_count }} new partner document{{ pending_partner_document_count|pluralize }} pending review">{{ pending_partner_document_count }}</span>{% endif %}</a>{% endif %}
     <a class="side-nav-system" href="/admin/">System Admin</a>
   </nav>

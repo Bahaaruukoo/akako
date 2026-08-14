@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block title %}Ceremony Workspace | Akako House{% endblock %}
 
@@ -16,16 +16,18 @@
 
     <section class="ceremony-stage-banner"><span>Current stage</span><strong>{{ ceremony.get_status_display }}</strong>{% if ceremony.outcome_reason %}<small>{{ ceremony.get_outcome_reason_display }}</small>{% endif %}</section>
 
+    {% include "bookings/_booking_progress.html" %}
+
     <div class="ceremony-grid">
       <section class="work-panel ceremony-main">
-        <div class="section-heading"><div><p class="eyebrow">Financial record</p><h2>Payments</h2></div><span>Final due {{ ceremony.final_payment_due_at|default:"Not set" }}</span></div>
+        <div class="section-heading"><div><p class="eyebrow">Financial record</p><h2>Payments</h2></div><div><span>Final due {{ ceremony.final_payment_due_at|default:"Not set" }}</span> <a class="button secondary" href="{% url 'invoice_create' %}?ceremony={{ ceremony.public_id }}">Create Invoice</a></div></div>
         <div class="payment-card-grid">
           <article class="payment-card">
             <div><span>Initial deposit</span><mark>{{ deposit.get_status_display }}</mark></div>
             <strong>${{ deposit.expected_amount }}</strong><small>Due {{ deposit.due_at|default:"Not set" }}</small>
             {% if deposit.paid_at %}<p>Paid {{ deposit.paid_at }} · ${{ deposit.received_amount }}</p>{% endif %}
             {% if not ceremony.terminal and deposit.status != deposit.Status.PAID and deposit.status != deposit.Status.WAIVED %}
-              <form method="post" action="{% url 'record_payment' ceremony.public_id 'deposit' %}" class="compact-payment-form">{% csrf_token %}{{ deposit_form.received_amount }}{{ deposit_form.provider_reference }}{{ deposit_form.notes }}<button class="button primary" type="submit" data-confirm="Confirm that this deposit was actually received? This will update the financial record and ceremony stage.">Record Deposit Paid</button></form>
+              <form method="post" action="{% url 'record_payment' ceremony.public_id 'deposit' %}" class="compact-payment-form">{% csrf_token %}{{ deposit_form.method }}{{ deposit_form.received_amount }}{{ deposit_form.provider_reference }}{{ deposit_form.notes }}<button class="button primary" type="submit" data-confirm="Confirm that this deposit was actually received? This will update the financial record and ceremony stage.">Record Deposit Paid</button></form>
             {% endif %}
             {% if ceremony.status != ceremony.Status.COMPLETED %}
               {% if ceremony.terminal and deposit.status == deposit.Status.PAID %}
@@ -40,7 +42,7 @@
             <strong>${{ final_payment.expected_amount }}</strong><small>Due {{ final_payment.due_at|default:"Not set" }}</small>
             {% if final_payment.paid_at %}<p>Paid {{ final_payment.paid_at }} · ${{ final_payment.received_amount }}</p>{% endif %}
             {% if not ceremony.terminal and final_payment.status != final_payment.Status.PAID and final_payment.status != final_payment.Status.WAIVED %}
-              <form method="post" action="{% url 'record_payment' ceremony.public_id 'final' %}" class="compact-payment-form">{% csrf_token %}{{ final_payment_form.received_amount }}{{ final_payment_form.provider_reference }}{{ final_payment_form.notes }}<button class="button primary" type="submit" data-confirm="Confirm that the final payment was actually received? This will update the financial record.">Record Final Paid</button></form>
+              <form method="post" action="{% url 'record_payment' ceremony.public_id 'final' %}" class="compact-payment-form">{% csrf_token %}{{ final_payment_form.method }}{{ final_payment_form.received_amount }}{{ final_payment_form.provider_reference }}{{ final_payment_form.notes }}<button class="button primary" type="submit" data-confirm="Confirm that the final payment was actually received? This will update the financial record.">Record Final Paid</button></form>
             {% endif %}
             {% if ceremony.status != ceremony.Status.COMPLETED %}
               {% if ceremony.terminal and final_payment.status == final_payment.Status.PAID %}
@@ -57,7 +59,7 @@
             <summary>Customer paid the full ceremony total at once</summary>
             <form method="post" action="{% url 'record_full_payment' ceremony.public_id %}" class="compact-payment-form">
               {% csrf_token %}
-              <label>Total received{{ full_payment_form.received_amount }}</label>
+              <label>Payment method{{ full_payment_form.method }}</label><label>Total received{{ full_payment_form.received_amount }}</label>
               <label>Transaction reference{{ full_payment_form.provider_reference }}</label>
               <label>Notes{{ full_payment_form.notes }}</label>
               <button class="button primary" type="submit" data-confirm="Confirm that the complete outstanding amount was received? This will settle both deposit and final-payment obligations.">Record Paid in Full</button>
@@ -96,3 +98,5 @@
   </main>
 </div>
 {% endblock %}
+
+

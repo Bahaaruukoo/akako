@@ -1,3 +1,4 @@
+﻿from decimal import Decimal
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
@@ -27,6 +28,9 @@ from .forms import (
     CustomerReviewForm,
     EventPhotoForm,
     FullPaymentForm,
+    InvoiceEmailForm,
+    InvoiceForm,
+    InvoiceTransactionForm,
     PartnerAssignmentForm,
     PartnerAvailabilityForm,
     PartnerDocumentForm,
@@ -43,6 +47,8 @@ from .forms import (
     ShopInterestForm,
     TestimonialForm,
 )
+from .invoice_service import generate_and_store_invoice, send_invoice_email, send_payment_receipt_email
+from .booking_progress import allocate_invoice_transaction, record_linked_invoice_transaction, sync_booking_milestones
 from .models import (
     AvailabilityOffer,
     CapacityHold,
@@ -54,6 +60,9 @@ from .models import (
     CustomerReview,
     EventPhoto,
     Notification,
+    Invoice,
+    InvoiceTransaction,
+    InvoiceVersion,
     Partner,
     PartnerAvailability,
     PartnerDocument,
@@ -61,6 +70,7 @@ from .models import (
     PartnerPayout,
     PartnerTask,
     Payment,
+    PaymentReceipt,
     PaymentCheckout,
     PolicyAcceptance,
     PolicyDocument,
@@ -442,6 +452,7 @@ def customer_quote_detail(request, public_id):
         customer=customer,
     )
     ceremony = getattr(quote, "ceremony", None)
+    booking_progress = sync_booking_milestones(ceremony, source="customer_view") if ceremony else []
     cancellation_requests = ceremony.customer_cancellation_requests.all() if ceremony else []
     customer_review = CustomerReview.objects.filter(ceremony=ceremony).first() if ceremony else None
     return render(
@@ -451,6 +462,7 @@ def customer_quote_detail(request, public_id):
             "customer": customer,
             "quote_request": quote,
             "ceremony": ceremony,
+            "booking_progress": booking_progress,
             "payments": ceremony.payments.all() if ceremony else [],
             "cancellation_form": CustomerCancellationRequestForm(),
             "cancellation_request": (
@@ -1403,7 +1415,7 @@ def quote_requests(request):
         customer_name=""
     ).exclude(email="").exclude(phone="")
     queryset = submitted_quotes.select_related("ceremony").prefetch_related(
-        "availability_offers"
+        "availability_offers", "ceremony__invoices"
     )
     new_quote_count = submitted_quotes.filter(status=QuoteRequest.Status.NEW).count()
     answered_availability_quote_ids = set(
@@ -1613,8 +1625,10 @@ def ceremony_detail(request, public_id):
     final_payment = ceremony.final_payment
     partner_task = PartnerTask.objects.filter(ceremony=ceremony).select_related("partner").first()
     partner_payout = PartnerPayout.objects.filter(task=partner_task).first() if partner_task else None
+    booking_progress = sync_booking_milestones(ceremony, actor=request.user, source="staff_view")
     context = {
         "ceremony": ceremony,
+        "booking_progress": booking_progress,
         "quote_request": ceremony.quote,
         "deposit": deposit,
         "final_payment": final_payment,
@@ -1650,6 +1664,8 @@ def record_payment(request, public_id, payment_type):
         messages.error(request, "Check the payment amount and try again.")
         return redirect("ceremony_detail", public_id=ceremony.public_id)
 
+    record_linked_invoice_transaction(ceremony, amount=form.cleaned_data["received_amount"], method=InvoiceTransaction.Method.OTHER, reference=form.cleaned_data["provider_reference"], notes=form.cleaned_data["notes"], actor=request.user)
+
     payment.received_amount = form.cleaned_data["received_amount"]
     payment.provider_reference = form.cleaned_data["provider_reference"]
     payment.notes = form.cleaned_data["notes"]
@@ -1680,19 +1696,21 @@ def record_payment(request, public_id, payment_type):
                 note=f"Final payment of ${payment.received_amount} recorded.",
             )
     messages.success(request, f"{payment.get_payment_type_display()} recorded as paid.")
+    progress = sync_booking_milestones(ceremony, actor=request.user, source="staff_payment")
+    booking_status = next((step["label"] for step in progress if step["current"]), ceremony.get_status_display())
     try:
-        send_payment_confirmation_email(
-            ceremony,
-            payment.get_payment_type_display(),
-            payment.received_amount,
-        )
+        if linked_transaction:
+            send_payment_receipt_email(linked_transaction.invoice, linked_transaction, booking_status=booking_status, generated_by=request.user)
+        else:
+            send_payment_confirmation_email(ceremony, payment.get_payment_type_display(), payment.received_amount)
     except Exception:
-        pass
+        messages.warning(request, "Payment was recorded, but the customer receipt email could not be sent.")
     notify_payment_received(
         ceremony,
         payment.get_payment_type_display(),
         payment.received_amount,
     )
+    sync_booking_milestones(ceremony, actor=request.user, source="staff_payment")
     return redirect("ceremony_detail", public_id=ceremony.public_id)
 
 
@@ -1713,6 +1731,7 @@ def record_full_payment(request, public_id):
 
     now = timezone.now()
     reference = form.cleaned_data["provider_reference"]
+    record_linked_invoice_transaction(ceremony, amount=form.cleaned_data["received_amount"], method=InvoiceTransaction.Method.OTHER, reference=reference, notes=form.cleaned_data["notes"], actor=request.user)
     notes = form.cleaned_data["notes"]
     settled = []
     for payment in ceremony.payments.filter(
@@ -1747,14 +1766,15 @@ def record_full_payment(request, public_id):
         ),
         changed_by=request.user,
     )
+    progress = sync_booking_milestones(ceremony, actor=request.user, source="staff_payment")
+    booking_status = next((step["label"] for step in progress if step["current"]), ceremony.get_status_display())
     try:
-        send_payment_confirmation_email(
-            ceremony,
-            "Paid in full",
-            form.cleaned_data["received_amount"],
-        )
+        if linked_transaction:
+            send_payment_receipt_email(linked_transaction.invoice, linked_transaction, booking_status=booking_status, generated_by=request.user)
+        else:
+            send_payment_confirmation_email(ceremony, "Paid in full", form.cleaned_data["received_amount"])
     except Exception:
-        pass
+        messages.warning(request, "Payment was recorded, but the customer receipt email could not be sent.")
     notify_payment_received(
         ceremony,
         "Paid in full",
@@ -2132,3 +2152,219 @@ def manage_partner_payout(request, public_id):
     else:
         messages.error(request, "Check the partner payout details and try again.")
     return redirect("ceremony_detail", public_id=ceremony.public_id)
+
+@staff_member_required
+def invoice_list(request):
+    active_tab = request.GET.get("tab", "invoices")
+    if active_tab not in {"invoices", "payments", "receipts"}:
+        active_tab = "invoices"
+    query = request.GET.get("q", "").strip()
+    status = request.GET.get("status", "")
+    method = request.GET.get("method", "")
+    delivery = request.GET.get("delivery", "")
+    date_from = parse_date(request.GET.get("date_from", ""))
+    date_to = parse_date(request.GET.get("date_to", ""))
+
+    all_invoices = list(
+        Invoice.objects.select_related("ceremony__quote").prefetch_related("transactions")
+    )
+    for invoice in all_invoices:
+        invoice.refresh_status()
+    summary = {
+        "outstanding": sum((invoice.balance_due for invoice in all_invoices if invoice.status != Invoice.Status.VOID), Decimal("0.00")),
+        "overdue": sum(1 for invoice in all_invoices if invoice.status == Invoice.Status.OVERDUE),
+        "received": InvoiceTransaction.objects.aggregate(total=Sum("amount"))["total"] or Decimal("0.00"),
+        "receipts": PaymentReceipt.objects.count(),
+    }
+
+    invoices = Invoice.objects.select_related("ceremony__quote").prefetch_related("transactions")
+    payments = InvoiceTransaction.objects.select_related("invoice__ceremony__quote", "recorded_by").prefetch_related("allocations", "receipt")
+    receipts = PaymentReceipt.objects.select_related("transaction__invoice__ceremony__quote", "invoice_version")
+
+    if query:
+        invoice_search = Q(number__icontains=query) | Q(customer_name__icontains=query) | Q(customer_email__icontains=query) | Q(ceremony__quote__event_type__icontains=query)
+        invoices = invoices.filter(invoice_search)
+        payments = payments.filter(Q(invoice__number__icontains=query) | Q(invoice__customer_name__icontains=query) | Q(invoice__customer_email__icontains=query) | Q(reference__icontains=query))
+        receipts = receipts.filter(Q(number__icontains=query) | Q(transaction__invoice__number__icontains=query) | Q(transaction__invoice__customer_name__icontains=query) | Q(transaction__invoice__customer_email__icontains=query) | Q(payment_reference__icontains=query))
+    if status:
+        invoices = invoices.filter(status=status)
+    if method:
+        payments = payments.filter(method=method)
+        receipts = receipts.filter(payment_method=method)
+    if delivery == "sent":
+        receipts = receipts.filter(emailed_at__isnull=False)
+    elif delivery == "not_sent":
+        receipts = receipts.filter(emailed_at__isnull=True)
+    if date_from:
+        invoices = invoices.filter(issue_date__gte=date_from)
+        payments = payments.filter(received_on__gte=date_from)
+        receipts = receipts.filter(payment_date__gte=date_from)
+    if date_to:
+        invoices = invoices.filter(issue_date__lte=date_to)
+        payments = payments.filter(received_on__lte=date_to)
+        receipts = receipts.filter(payment_date__lte=date_to)
+
+    context = {
+        "active_nav": "invoices",
+        "active_tab": active_tab,
+        "invoices": invoices,
+        "payments": payments,
+        "receipts": receipts,
+        "summary": summary,
+        "statuses": Invoice.Status.choices,
+        "methods": InvoiceTransaction.Method.choices,
+        "selected_status": status,
+        "selected_method": method,
+        "selected_delivery": delivery,
+        "query": query,
+        "date_from": request.GET.get("date_from", ""),
+        "date_to": request.GET.get("date_to", ""),
+    }
+    return render(request, "bookings/invoice_list.html", context)
+
+
+@staff_member_required
+def invoice_create(request):
+    initial = {}
+    ceremony_id = request.GET.get("ceremony")
+    if ceremony_id:
+        ceremony = get_object_or_404(Ceremony.objects.select_related("quote"), public_id=ceremony_id)
+        quote = ceremony.quote
+        initial = {"ceremony": ceremony, "customer_name": quote.customer_name, "customer_email": quote.email, "description": f"{quote.get_event_type_display()} coffee service for {quote.guest_count} guests", "total_amount": quote.quoted_amount, "first_payment_amount": quote.deposit_amount or 0, "balance_due_date": ceremony.final_payment_due_at.date() if ceremony.final_payment_due_at else None}
+    form = InvoiceForm(request.POST or None, initial=initial)
+    if request.method == "POST" and form.is_valid():
+        invoice = form.save(commit=False)
+        invoice.created_by = request.user
+        invoice.save()
+        generate_and_store_invoice(invoice)
+        messages.success(request, f"Invoice {invoice.number} created and its PDF stored.")
+        return redirect("invoice_detail", public_id=invoice.public_id)
+    return render(request, "bookings/invoice_form.html", {"form": form, "title": "Create invoice", "active_nav": "invoices"})
+
+
+@staff_member_required
+def invoice_detail(request, public_id):
+    invoice = get_object_or_404(Invoice.objects.select_related("ceremony__quote").prefetch_related("transactions__receipt", "transactions__receipt__invoice_version", "versions"), public_id=public_id)
+    invoice.refresh_status()
+    return render(request, "bookings/invoice_detail.html", {"invoice": invoice, "transaction_form": InvoiceTransactionForm(), "active_nav": "invoices"})
+
+
+@staff_member_required
+def invoice_edit(request, public_id):
+    invoice = get_object_or_404(Invoice, public_id=public_id)
+    if invoice.status == Invoice.Status.VOID:
+        messages.error(request, "A void invoice cannot be edited.")
+        return redirect("invoice_detail", public_id=invoice.public_id)
+    form = InvoiceForm(request.POST or None, instance=invoice)
+    if request.method == "POST" and form.is_valid():
+        invoice = form.save()
+        generate_and_store_invoice(invoice)
+        invoice.refresh_status()
+        messages.success(request, "Invoice updated and the stored PDF regenerated.")
+        return redirect("invoice_detail", public_id=invoice.public_id)
+    return render(request, "bookings/invoice_form.html", {"form": form, "invoice": invoice, "title": f"Edit {invoice.number}", "active_nav": "invoices"})
+
+
+@staff_member_required
+def invoice_download(request, public_id):
+    invoice = get_object_or_404(Invoice, public_id=public_id)
+    if not invoice.pdf_file or not invoice.pdf_file.storage.exists(invoice.pdf_file.name):
+        generate_and_store_invoice(invoice)
+        invoice.refresh_from_db(fields=["pdf_file", "pdf_generated_at"])
+    return FileResponse(invoice.pdf_file.open("rb"), as_attachment=True, filename=f"{invoice.number}.pdf", content_type="application/pdf")
+
+
+@staff_member_required
+def invoice_version_download(request, version_id):
+    version = get_object_or_404(InvoiceVersion.objects.select_related("invoice"), pk=version_id)
+    if not version.pdf_file or not version.pdf_file.storage.exists(version.pdf_file.name):
+        raise Http404("This preserved invoice revision file is unavailable.")
+    return FileResponse(version.pdf_file.open("rb"), as_attachment=True, filename=f"{version.invoice.number}-v{version.revision}.pdf", content_type="application/pdf")
+
+
+@staff_member_required
+def payment_receipt_download(request, public_id):
+    receipt = get_object_or_404(PaymentReceipt, public_id=public_id)
+    if not receipt.pdf_file or not receipt.pdf_file.storage.exists(receipt.pdf_file.name):
+        raise Http404("This receipt file is unavailable.")
+    return FileResponse(receipt.pdf_file.open("rb"), as_attachment=True, filename=f"{receipt.number}.pdf", content_type="application/pdf")
+
+
+@staff_member_required
+def payment_receipt_resend(request, public_id):
+    if request.method != "POST":
+        return HttpResponseBadRequest("Use the receipt action to resend it.")
+    receipt = get_object_or_404(PaymentReceipt.objects.select_related("transaction__invoice__ceremony"), public_id=public_id)
+    try:
+        send_payment_receipt_email(receipt.transaction.invoice, receipt.transaction, booking_status=receipt.booking_status, generated_by=request.user)
+    except Exception as exc:
+        messages.error(request, f"Receipt could not be resent: {exc}")
+    else:
+        messages.success(request, f"Receipt {receipt.number} was resent to {receipt.transaction.invoice.customer_email}.")
+    return redirect("invoice_detail", public_id=receipt.transaction.invoice.public_id)
+
+
+@staff_member_required
+def invoice_add_transaction(request, public_id):
+    invoice = get_object_or_404(Invoice, public_id=public_id)
+    if request.method != "POST" or invoice.status == Invoice.Status.VOID:
+        return HttpResponseBadRequest("Payment cannot be recorded.")
+    form = InvoiceTransactionForm(request.POST)
+    if form.is_valid():
+        item = form.save(commit=False)
+        item.invoice, item.recorded_by = invoice, request.user
+        item.save()
+        allocate_invoice_transaction(item, actor=request.user)
+        invoice.refresh_from_db()
+        invoice.refresh_status()
+        progress = sync_booking_milestones(invoice.ceremony, actor=request.user, source=f"invoice:{invoice.number}:payment")
+        booking_status = next((step["label"] for step in progress if step["current"]), invoice.ceremony.get_status_display())
+        try:
+            send_payment_receipt_email(invoice, item, booking_status=booking_status, generated_by=request.user)
+        except Exception:
+            generate_and_store_invoice(invoice)
+            messages.warning(request, "Payment was recorded and the invoice was updated, but the receipt email could not be sent.")
+        else:
+            messages.success(request, "Payment recorded. The updated invoice and receipt were emailed to the customer.")
+    else:
+        messages.error(request, "Check the payment details and try again.")
+    return redirect("invoice_detail", public_id=invoice.public_id)
+
+@staff_member_required
+def invoice_email(request, public_id):
+    invoice = get_object_or_404(Invoice.objects.select_related("ceremony__quote"), public_id=public_id)
+    default_subject = invoice.email_subject or f"Akako House invoice {invoice.number}"
+    default_body = invoice.email_body or f"Hi {invoice.customer_name},\n\nAttached is invoice {invoice.number} for your upcoming Akako House event. The total is ${invoice.total_amount:.2f}, with a first payment of ${invoice.first_payment_amount:.2f}.\n\nIf paying by Zelle or bank transfer, please include {invoice.number} in the memo or reference field so we can identify your payment.\n\nPlease let us know if you have any questions.\n\nBest regards,\nAkako House"
+    form = InvoiceEmailForm(request.POST or None, initial={"recipient": invoice.customer_email, "subject": default_subject, "body": default_body})
+    if request.method == "POST" and form.is_valid():
+        try:
+            send_invoice_email(invoice, **form.cleaned_data)
+            sync_booking_milestones(invoice.ceremony, actor=request.user, source=f"invoice:{invoice.number}:sent")
+        except Exception as exc:
+            messages.error(request, f"Invoice email could not be sent: {exc}")
+        else:
+            messages.success(request, f"Invoice emailed to {form.cleaned_data['recipient']} with the PDF attached.")
+            return redirect("invoice_detail", public_id=invoice.public_id)
+    return render(request, "bookings/invoice_email.html", {"invoice": invoice, "form": form, "active_nav": "invoices"})
+
+
+@staff_member_required
+def invoice_void(request, public_id):
+    invoice = get_object_or_404(Invoice, public_id=public_id)
+    if request.method != "POST":
+        return HttpResponseBadRequest("Use the invoice action to void it.")
+    invoice.status = Invoice.Status.VOID
+    invoice.save(update_fields=["status", "updated_at"])
+    generate_and_store_invoice(invoice)
+    messages.success(request, f"Invoice {invoice.number} was voided and retained for reference.")
+    return redirect("invoice_detail", public_id=invoice.public_id)
+
+
+
+
+
+
+
+
+
+

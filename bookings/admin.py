@@ -1,4 +1,4 @@
-from django.contrib import admin
+﻿from django.contrib import admin
 from django.contrib import messages
 from django.urls import reverse
 from django.utils.html import format_html
@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from .models import (
     AvailabilityOffer,
+    BookingMilestone,
     CapacityHold,
     Ceremony,
     ClientOrganization,
@@ -14,6 +15,9 @@ from .models import (
     CustomerProfile,
     CustomerReview,
     EventPhoto,
+    Invoice,
+    InvoiceTransaction,
+    InvoiceVersion,
     Notification,
     Partner,
     PartnerAvailability,
@@ -23,6 +27,8 @@ from .models import (
     PartnerTask,
     Payment,
     PaymentCheckout,
+    PaymentReceipt,
+    PaymentAllocation,
     PolicyAcceptance,
     PolicyDocument,
     QuoteRequest,
@@ -383,3 +389,78 @@ class StatusHistoryAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+class InvoiceTransactionInline(admin.TabularInline):
+    model = InvoiceTransaction
+    extra = 0
+
+
+@admin.register(Invoice)
+class InvoiceAdmin(admin.ModelAdmin):
+    list_display = ("number", "customer_name", "total_amount", "status", "issue_date", "last_emailed_at")
+    list_filter = ("status", "issue_date")
+    search_fields = ("number", "customer_name", "customer_email")
+    readonly_fields = ("number", "pdf_generated_at", "last_emailed_at", "created_at", "updated_at")
+    inlines = [InvoiceTransactionInline]
+
+@admin.register(BookingMilestone)
+class BookingMilestoneAdmin(admin.ModelAdmin):
+    list_display = ("ceremony", "stage", "source", "recorded_by", "reached_at")
+    list_filter = ("stage", "reached_at")
+    search_fields = ("ceremony__quote__customer_name", "ceremony__quote__email", "source")
+    readonly_fields = ("ceremony", "stage", "source", "note", "recorded_by", "reached_at")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(PaymentAllocation)
+class PaymentAllocationAdmin(admin.ModelAdmin):
+    list_display = ("transaction", "payment", "amount", "created_at")
+    readonly_fields = ("transaction", "payment", "amount", "created_at")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+@admin.register(InvoiceVersion)
+class InvoiceVersionAdmin(admin.ModelAdmin):
+    list_display = ("invoice", "revision", "generated_by", "created_at")
+    search_fields = ("invoice__number", "invoice__customer_name", "checksum")
+    readonly_fields = ("invoice", "revision", "pdf_file", "checksum", "generated_by", "created_at")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(PaymentReceipt)
+class PaymentReceiptAdmin(admin.ModelAdmin):
+    list_display = ("number", "transaction", "amount", "balance_after", "payment_date", "emailed_at")
+    search_fields = ("number", "transaction__invoice__number", "transaction__invoice__customer_name")
+    readonly_fields = ("public_id", "transaction", "invoice_version", "number", "amount", "balance_after", "payment_method", "payment_date", "payment_reference", "final_due_date", "booking_status", "pdf_file", "emailed_to", "emailed_at", "created_at")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+

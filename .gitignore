@@ -1,4 +1,4 @@
-.venv/
+﻿.venv/
 .env
 db.sqlite3
 __pycache__/
@@ -9,3 +9,23 @@ backups/
 .chrome-mobile-audit-2/
 .chrome-mobile-audit/
 .edge-mobile-audit/
+# Runtime and customer data — never commit or deploy from a developer machine
+media/
+output/
+tmp/
+
+# Local design explorations and generated branding exports
+branding/
+
+# Local database variants and dumps
+*.sqlite3
+*.sqlite3-*
+*.db
+*.dump
+
+# Local logs and test artifacts
+*.log
+.coverage
+htmlcov/
+.pytest_cache/
+

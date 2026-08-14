@@ -1,4 +1,4 @@
-import uuid
+﻿import uuid
 from datetime import datetime, time, timedelta
 from decimal import Decimal
 
@@ -938,6 +938,8 @@ class Notification(models.Model):
         QUOTE_DECLINED = "quote_declined", "Quote declined"
         QUOTE_EXPIRED = "quote_expired", "Quote expired"
         PAYMENT_RECEIVED = "payment_received", "Payment received"
+        BOOKING_CONFIRMED = "booking_confirmed", "Booking confirmed"
+        BOOKING_PAID = "booking_paid", "Booking paid in full"
         PAYMENT_DUE = "payment_due", "Payment approaching"
         PAYMENT_OVERDUE = "payment_overdue", "Payment overdue"
         PARTNER_ASSIGNED = "partner_assigned", "Partner assignment"
@@ -1063,3 +1065,188 @@ class StatusHistory(models.Model):
 
     def __str__(self):
         return f"{self.from_status or 'Created'} → {self.to_status}"
+
+class BookingMilestone(models.Model):
+    class Stage(models.TextChoices):
+        QUOTE_ACCEPTED = "quote_accepted", "Quote accepted"
+        INVOICE_SENT = "invoice_sent", "Invoice sent"
+        DEPOSIT_PENDING = "deposit_pending", "Initial payment pending"
+        DEPOSIT_RECEIVED = "deposit_received", "Initial payment received"
+        BOOKING_CONFIRMED = "booking_confirmed", "Booking confirmed"
+        BALANCE_PENDING = "balance_pending", "Balance pending"
+        PAID_IN_FULL = "paid_in_full", "Paid in full"
+        EVENT_READY = "event_ready", "Event ready"
+        COMPLETED = "completed", "Completed"
+
+    ceremony = models.ForeignKey(Ceremony, on_delete=models.PROTECT, related_name="milestones")
+    stage = models.CharField(max_length=32, choices=Stage.choices)
+    source = models.CharField(max_length=80, blank=True)
+    note = models.TextField(blank=True)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    reached_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["reached_at", "pk"]
+        constraints = [models.UniqueConstraint(fields=["ceremony", "stage"], name="unique_ceremony_booking_milestone")]
+
+    def __str__(self):
+        return f"{self.ceremony} — {self.get_stage_display()}"
+
+class Invoice(models.Model):
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        SENT = "sent", "Sent"
+        PARTIALLY_PAID = "partially_paid", "Partially paid"
+        PAID = "paid", "Paid"
+        OVERDUE = "overdue", "Overdue"
+        VOID = "void", "Void"
+
+    public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    ceremony = models.ForeignKey(Ceremony, on_delete=models.PROTECT, related_name="invoices")
+    number = models.CharField(max_length=24, unique=True, blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
+    customer_name = models.CharField(max_length=160)
+    customer_email = models.EmailField()
+    billing_address = models.TextField(blank=True)
+    description = models.CharField(max_length=240, default="Corporate event coffee service")
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    first_payment_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    issue_date = models.DateField(default=timezone.localdate)
+    first_payment_due_date = models.DateField(null=True, blank=True)
+    balance_due_date = models.DateField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    payment_instructions = models.TextField(blank=True)
+    pdf_file = models.FileField(upload_to="invoices/%Y/%m/", storage=private_document_storage, blank=True)
+    pdf_generated_at = models.DateTimeField(null=True, blank=True)
+    last_emailed_to = models.EmailField(blank=True)
+    last_emailed_at = models.DateTimeField(null=True, blank=True)
+    email_subject = models.CharField(max_length=240, blank=True)
+    email_body = models.TextField(blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="created_invoices")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-issue_date", "-created_at"]
+
+    def save(self, *args, **kwargs):
+        needs_number = not self.number
+        super().save(*args, **kwargs)
+        if needs_number:
+            self.number = f"AKH-{self.pk:05d}"
+            type(self).objects.filter(pk=self.pk).update(number=self.number)
+
+    @property
+    def amount_paid(self):
+        return sum((item.amount for item in self.transactions.all()), Decimal("0.00"))
+
+    @property
+    def balance_due(self):
+        return max(self.total_amount - self.amount_paid, Decimal("0.00"))
+
+    def refresh_status(self):
+        if self.status == self.Status.VOID:
+            return
+        paid = self.amount_paid
+        if paid >= self.total_amount:
+            new_status = self.Status.PAID
+        elif paid > 0:
+            new_status = self.Status.PARTIALLY_PAID
+        elif self.balance_due_date and self.balance_due_date < timezone.localdate():
+            new_status = self.Status.OVERDUE
+        elif self.last_emailed_at:
+            new_status = self.Status.SENT
+        else:
+            new_status = self.Status.DRAFT
+        if self.status != new_status:
+            self.status = new_status
+            self.save(update_fields=["status", "updated_at"])
+
+    def __str__(self):
+        return f"{self.number or 'Draft invoice'} - {self.customer_name}"
+
+
+class InvoiceTransaction(models.Model):
+    class Method(models.TextChoices):
+        CARD = "card", "Card"
+        BANK = "bank", "Bank transfer / ACH"
+        ZELLE = "zelle", "Zelle"
+        CHECK = "check", "Check"
+        CASH = "cash", "Cash"
+        OTHER = "other", "Other"
+
+    invoice = models.ForeignKey(Invoice, on_delete=models.PROTECT, related_name="transactions")
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    received_on = models.DateField(default=timezone.localdate)
+    method = models.CharField(max_length=16, choices=Method.choices, default=Method.OTHER)
+    reference = models.CharField(max_length=120, blank=True)
+    notes = models.TextField(blank=True)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="recorded_invoice_transactions")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-received_on", "-created_at"]
+
+    def __str__(self):
+        return f"{self.invoice.number} - ${self.amount}"
+
+
+class PaymentAllocation(models.Model):
+    transaction = models.ForeignKey(InvoiceTransaction, on_delete=models.PROTECT, related_name="allocations")
+    payment = models.ForeignKey(Payment, on_delete=models.PROTECT, related_name="allocations")
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["pk"]
+        constraints = [models.UniqueConstraint(fields=["transaction", "payment"], name="unique_transaction_payment_allocation")]
+
+    def __str__(self):
+        return f"{self.transaction} → {self.payment.get_payment_type_display()} (${self.amount})"
+class InvoiceVersion(models.Model):
+    invoice = models.ForeignKey(Invoice, on_delete=models.PROTECT, related_name="versions")
+    revision = models.PositiveIntegerField()
+    pdf_file = models.FileField(upload_to="invoice_versions/%Y/%m/", storage=private_document_storage)
+    checksum = models.CharField(max_length=64)
+    generated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-revision"]
+        constraints = [models.UniqueConstraint(fields=["invoice", "revision"], name="unique_invoice_revision")]
+
+    def __str__(self):
+        return f"{self.invoice.number} revision {self.revision}"
+
+
+class PaymentReceipt(models.Model):
+    public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    transaction = models.OneToOneField(InvoiceTransaction, on_delete=models.PROTECT, related_name="receipt")
+    invoice_version = models.ForeignKey(InvoiceVersion, on_delete=models.PROTECT, related_name="receipts")
+    number = models.CharField(max_length=24, unique=True, blank=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    balance_after = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_method = models.CharField(max_length=16, choices=InvoiceTransaction.Method.choices)
+    payment_date = models.DateField()
+    payment_reference = models.CharField(max_length=120, blank=True)
+    final_due_date = models.DateField(null=True, blank=True)
+    booking_status = models.CharField(max_length=80)
+    pdf_file = models.FileField(upload_to="payment_receipts/%Y/%m/", storage=private_document_storage)
+    emailed_to = models.EmailField(blank=True)
+    emailed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def save(self, *args, **kwargs):
+        needs_number = not self.number
+        super().save(*args, **kwargs)
+        if needs_number:
+            self.number = f"AKH-R-{self.transaction_id:05d}"
+            type(self).objects.filter(pk=self.pk).update(number=self.number)
+
+    def __str__(self):
+        return f"{self.number or 'Receipt'} - {self.transaction.invoice.number}"
+
+

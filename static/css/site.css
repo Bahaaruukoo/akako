@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --coffee: #3a2113;
   --coffee-2: #6b4328;
   --green: #3e7a35;
@@ -1842,13 +1842,16 @@ label strong {
 
 .side-nav {
   flex-direction: column;
-  margin-top: 36px;
+  gap: 4px;
+  margin-top: 24px;
 }
 
 .side-nav a {
   border-radius: 8px;
   color: rgba(255, 255, 255, 0.72);
-  padding: 11px 12px;
+  font-size: 0.96rem;
+  line-height: 1.25;
+  padding: 9px 10px;
 }
 
 .side-nav a.active,
@@ -1860,8 +1863,8 @@ label strong {
 .side-nav .side-nav-system {
   border-top: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 0;
-  margin-top: 18px;
-  padding-top: 20px;
+  margin-top: 10px;
+  padding-top: 14px;
 }
 
 .dashboard {
@@ -1981,7 +1984,13 @@ label strong {
 }
 
 .quote-list-row {
-  grid-template-columns: 1.25fr 0.85fr 0.85fr 1.25fr 0.7fr 0.65fr 1fr;
+  grid-template-columns: 1.2fr 0.85fr 0.8fr 1.15fr 0.85fr 1fr 1fr;
+  min-width: 1120px;
+}
+
+.quote-list-row .quote-action-column {
+  border-left: 1px solid var(--line);
+  padding-left: 14px;
 }
 
 .partner-list-row {
@@ -3230,3 +3239,71 @@ mark {
     grid-template-columns: 1fr;
   }
 }
+.invoice-filter-bar {
+  align-items: end;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(260px, 1fr) minmax(180px, 260px) auto;
+  margin-bottom: 1.25rem;
+}
+
+.invoice-filter-bar input,
+.invoice-filter-bar select {
+  margin: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+.invoice-filter-bar .button {
+  margin: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .invoice-filter-bar {
+    grid-template-columns: 1fr;
+  }
+}
+
+.booking-progress { margin: 1rem 0 1.35rem; padding: 1.1rem 1.25rem; border: 1px solid var(--border, #ead8bd); border-radius: 14px; background: #fff; }
+.booking-progress .section-heading { margin-bottom: .9rem; }
+.booking-progress-list { display: grid; grid-template-columns: repeat(9, minmax(90px, 1fr)); gap: .45rem; margin: 0; padding: 0; list-style: none; }
+.booking-progress-list li { position: relative; display: flex; gap: .5rem; align-items: flex-start; color: #8a8178; font-size: .78rem; }
+.booking-progress-list li::before { content: ""; position: absolute; top: .42rem; left: .55rem; right: calc(100% - .05rem); height: 2px; background: #e5ddd3; transform: translateX(-100%); }
+.booking-progress-list li:first-child::before { display: none; }
+.booking-progress-dot { position: relative; z-index: 1; flex: 0 0 .85rem; width: .85rem; height: .85rem; margin-top: .1rem; border: 2px solid #cfc4b7; border-radius: 50%; background: #fff; }
+.booking-progress-list strong, .booking-progress-list small { display: block; }
+.booking-progress-list small { margin-top: .2rem; font-size: .68rem; }
+.booking-progress-list .is-reached { color: #276b38; }
+.booking-progress-list .is-reached .booking-progress-dot { border-color: #357d3a; background: #357d3a; }
+.booking-progress-list .is-current { color: #3d2114; font-weight: 700; }
+.booking-progress-list .is-current .booking-progress-dot { outline: 3px solid #e6c978; }
+@media (max-width: 900px) { .booking-progress-list { grid-template-columns: 1fr; gap: .7rem; } .booking-progress-list li::before { top: -.8rem; bottom: auto; left: .4rem; width: 2px; height: 1rem; transform: none; } }
+
+
+
+
+.finance-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.finance-summary article { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.15rem; }
+.finance-tabs { display: flex; gap: .35rem; margin-bottom: 1rem; border-bottom: 1px solid var(--line); }
+.finance-tabs a { color: var(--muted); font-weight: 800; padding: .8rem 1rem; border-bottom: 3px solid transparent; }
+.finance-tabs a.active { color: var(--green); border-bottom-color: var(--gold); }
+.finance-filter-bar { align-items: end; display: flex; flex-wrap: wrap; gap: .75rem; margin-bottom: 1.2rem; }
+.finance-filter-bar label { display: grid; flex: 1 1 150px; gap: .3rem; color: var(--muted); font-size: .76rem; font-weight: 800; }
+.finance-filter-bar label:first-of-type { flex-basis: 280px; }
+.finance-filter-bar input, .finance-filter-bar select { box-sizing: border-box; width: 100%; min-width: 0; margin: 0; border: 1px solid #d8cfc5; border-radius: 9px; background: #fffdfa; color: #2e251f; font: inherit; padding: .72rem .8rem; }
+.finance-filter-bar .button { margin: 0; white-space: nowrap; }
+.finance-table-wrap { overflow-x: auto; }
+.finance-table { min-width: 980px; }
+.finance-row { align-items: center; border-bottom: 1px solid var(--line); color: var(--coffee); display: grid; gap: 12px; padding: 13px 0; }
+.finance-row small { color: var(--muted); display: block; line-height: 1.35; margin-top: .2rem; }
+.finance-head { color: var(--muted); font-size: .76rem; font-weight: 850; text-transform: uppercase; letter-spacing: .03em; }
+.invoice-manager-table .finance-row { grid-template-columns: 1fr 1.25fr .9fr .62fr .62fr .62fr .75fr; }
+.payment-manager-table .finance-row { grid-template-columns: .7fr 1.2fr .75fr 1fr 1fr .9fr; }
+.receipt-manager-table { min-width: 1160px; }
+.receipt-manager-table .finance-row { grid-template-columns: .85fr 1.2fr .8fr .8fr .8fr .85fr .9fr; }
+.finance-actions { align-items: flex-start; display: flex; flex-direction: column; gap: .25rem; }
+.finance-actions form { margin: 0; }
+.finance-actions button { background: none; border: 0; cursor: pointer; font: inherit; padding: 0; }
+@media (max-width: 800px) { .finance-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .finance-tabs { overflow-x: auto; } }
+@media (max-width: 520px) { .finance-summary { grid-template-columns: 1fr; } }

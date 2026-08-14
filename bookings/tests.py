@@ -1,4 +1,4 @@
-from datetime import date, time
+﻿from datetime import date, time
 from decimal import Decimal
 import tempfile
 from unittest.mock import patch
@@ -14,6 +14,7 @@ from django.utils import timezone
 
 from .models import (
     AvailabilityOffer,
+    BookingMilestone,
     CapacityHold,
     Ceremony,
     ClientOrganization,
@@ -22,6 +23,9 @@ from .models import (
     CustomerProfile,
     CustomerReview,
     EventPhoto,
+    Invoice,
+    InvoiceTransaction,
+    InvoiceVersion,
     Notification,
     Partner,
     PartnerDocument,
@@ -30,12 +34,15 @@ from .models import (
     PartnerTask,
     Payment,
     PaymentCheckout,
+    PaymentAllocation,
+    PaymentReceipt,
     PolicyAcceptance,
     PolicyDocument,
     QuoteRequest,
     ShopInterest,
     Testimonial,
 )
+from .invoice_service import build_invoice_pdf, build_payment_receipt_pdf, generate_and_store_invoice, payment_receipt_number, payment_reference_notice
 from .services import (
     accept_availability_offer,
     partner_conflict_reason,
@@ -2115,3 +2122,222 @@ class BookingFlowTests(TestCase):
         self.assertContains(self.client.get(reverse("home")), "A memorable gathering")
 
 # Create your tests here.
+
+class InvoiceFeatureTests(TestCase):
+    def setUp(self):
+        self.media = tempfile.TemporaryDirectory()
+        self.override = override_settings(MEDIA_ROOT=self.media.name, EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+        self.override.enable()
+        self.staff = get_user_model().objects.create_user(email="invoice-staff@example.com", password="pass", is_staff=True, is_superuser=True)
+        self.client.force_login(self.staff)
+        quote = QuoteRequest.objects.create(customer_name="Corporate Client", email="client@example.com", phone="555-0102", event_type=QuoteRequest.EventType.CORPORATE, event_date=date(2026, 9, 20), event_time=time(10, 0), location="Washington, DC", guest_count=35, quoted_amount=Decimal("700.00"), deposit_amount=Decimal("400.00"), status=QuoteRequest.Status.QUOTED, quote_expires_at=timezone.now()+timezone.timedelta(days=2))
+        self.ceremony = quote.accept_quote()
+        self.invoice = Invoice.objects.create(ceremony=self.ceremony, customer_name=quote.customer_name, customer_email=quote.email, description="Corporate coffee service for 35 guests", total_amount=Decimal("700.00"), first_payment_amount=Decimal("400.00"), created_by=self.staff)
+
+    def tearDown(self):
+        self.override.disable()
+        self.media.cleanup()
+
+    def test_invoice_number_and_pdf(self):
+        self.assertRegex(self.invoice.number, r"^AKH-\d{5}$")
+        content = build_invoice_pdf(self.invoice)
+        self.assertTrue(content.startswith(b"%PDF"))
+        self.assertIn(b"AKH-", content)
+        notice = payment_reference_notice(self.invoice)
+        self.assertIn("Required payment reference", notice)
+        self.assertIn(self.invoice.number, notice)
+
+    def test_partial_payment_updates_status_and_balance(self):
+        InvoiceTransaction.objects.create(invoice=self.invoice, amount=Decimal("400.00"), method=InvoiceTransaction.Method.ZELLE, recorded_by=self.staff)
+        self.invoice.refresh_status()
+        self.invoice.refresh_from_db()
+        self.assertEqual(self.invoice.status, Invoice.Status.PARTIALLY_PAID)
+        self.assertEqual(self.invoice.balance_due, Decimal("300.00"))
+
+    def test_default_email_draft_includes_payment_reference_instruction(self):
+        response = self.client.get(reverse("invoice_email", args=[self.invoice.public_id]))
+        self.assertContains(response, f"include {self.invoice.number} in the memo or reference field")
+    def test_staff_can_send_invoice_with_pdf_attachment(self):
+        response = self.client.post(reverse("invoice_email", args=[self.invoice.public_id]), {"recipient": "client@example.com", "subject": "Your invoice", "body": "Please see the attached invoice."})
+        self.assertRedirects(response, reverse("invoice_detail", args=[self.invoice.public_id]))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].attachments[0][2], "application/pdf")
+        self.invoice.refresh_from_db()
+        self.assertIsNotNone(self.invoice.last_emailed_at)
+
+    def test_quote_list_combines_invoice_and_preview_with_separate_action(self):
+        response = self.client.get(reverse("quote_requests"))
+        self.assertContains(response, "Invoice / Preview")
+        self.assertContains(response, '<span class="quote-action-column">Action</span>', html=True)
+        self.assertContains(response, "Customer Preview")
+        self.assertContains(response, reverse("invoice_detail", args=[self.invoice.public_id]))
+        self.assertContains(response, reverse("quote_review", args=[self.ceremony.quote.public_id]))
+
+    def test_accepted_quote_without_invoice_links_to_prefilled_create_page(self):
+        self.invoice.delete()
+        response = self.client.get(reverse("quote_requests"))
+        create_url = reverse("invoice_create") + f"?ceremony={self.ceremony.public_id}"
+        self.assertContains(response, "Create Invoice")
+        self.assertContains(response, create_url.replace("&", "&amp;"))
+
+    def test_staff_invoice_pages_render(self):
+        self.assertEqual(self.client.get(reverse("invoice_list")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("invoice_detail", args=[self.invoice.public_id])).status_code, 200)
+        self.assertEqual(self.client.get(reverse("invoice_create") + f"?ceremony={self.ceremony.public_id}").status_code, 200)
+
+    def test_invoice_payment_allocates_deposit_and_records_milestones(self):
+        response = self.client.post(
+            reverse("invoice_add_transaction", args=[self.invoice.public_id]),
+            {"amount": "400.00", "received_on": "2026-08-13", "method": "zelle", "reference": self.invoice.number, "notes": "Customer transfer"},
+        )
+        self.assertRedirects(response, reverse("invoice_detail", args=[self.invoice.public_id]))
+        deposit = self.ceremony.deposit_payment
+        deposit.refresh_from_db()
+        self.assertEqual(deposit.status, Payment.Status.PAID)
+        self.assertEqual(deposit.received_amount, Decimal("400.00"))
+        self.assertEqual(PaymentAllocation.objects.get().amount, Decimal("400.00"))
+        self.assertTrue(self.ceremony.milestones.filter(stage=BookingMilestone.Stage.DEPOSIT_RECEIVED).exists())
+        self.assertFalse(self.ceremony.milestones.filter(stage=BookingMilestone.Stage.BOOKING_CONFIRMED).exists())
+
+    def test_recorded_payment_emails_updated_invoice_receipt(self):
+        self.invoice.balance_due_date = date(2026, 9, 15)
+        self.invoice.save(update_fields=["balance_due_date", "updated_at"])
+        response = self.client.post(
+            reverse("invoice_add_transaction", args=[self.invoice.public_id]),
+            {"amount": "400.00", "received_on": "2026-08-13", "method": "zelle", "reference": self.invoice.number, "notes": "Customer transfer"},
+        )
+        self.assertRedirects(response, reverse("invoice_detail", args=[self.invoice.public_id]))
+        self.assertEqual(len(mail.outbox), 1)
+        receipt = mail.outbox[0]
+        self.assertEqual(receipt.to, ["client@example.com"])
+        self.assertIn("Amount received: $400.00", receipt.body)
+        self.assertIn("Payment method: Zelle", receipt.body)
+        self.assertIn("Payment date: August 13, 2026", receipt.body)
+        self.assertIn("Remaining balance: $300.00", receipt.body)
+        self.assertIn("Final due date: September 15, 2026", receipt.body)
+        self.assertIn("Booking status: Balance pending", receipt.body)
+        self.assertIn("official Akako House payment receipt", receipt.body)
+        self.assertEqual(len(receipt.attachments), 2)
+        transaction = self.invoice.transactions.get()
+        receipt_number = payment_receipt_number(transaction)
+        self.assertEqual(receipt.attachments[0][0], f"{receipt_number}.pdf")
+        self.assertEqual(receipt.attachments[0][2], "application/pdf")
+        self.assertTrue(receipt.attachments[0][1].startswith(b"%PDF"))
+        self.assertEqual(receipt.attachments[1][0], f"{self.invoice.number}-v1.pdf")
+        self.assertTrue(build_payment_receipt_pdf(self.invoice, transaction, booking_status="Balance pending").startswith(b"%PDF"))
+        self.invoice.refresh_from_db()
+        self.assertIsNotNone(self.invoice.last_emailed_at)
+    def test_receipt_and_invoice_revision_are_stored_permanently(self):
+        self.client.post(
+            reverse("invoice_add_transaction", args=[self.invoice.public_id]),
+            {"amount": "400.00", "received_on": "2026-08-13", "method": "zelle", "reference": self.invoice.number, "notes": "Customer transfer"},
+        )
+        receipt = PaymentReceipt.objects.get()
+        self.assertEqual(receipt.number, f"AKH-R-{receipt.transaction_id:05d}")
+        self.assertTrue(receipt.pdf_file.storage.exists(receipt.pdf_file.name))
+        self.assertEqual(receipt.balance_after, Decimal("300.00"))
+        self.assertEqual(receipt.invoice_version.invoice, self.invoice)
+        self.assertTrue(receipt.invoice_version.pdf_file.storage.exists(receipt.invoice_version.pdf_file.name))
+
+    def test_resending_receipt_reuses_same_record_and_files(self):
+        self.client.post(
+            reverse("invoice_add_transaction", args=[self.invoice.public_id]),
+            {"amount": "400.00", "received_on": "2026-08-13", "method": "bank", "reference": "ACH-1", "notes": ""},
+        )
+        receipt = PaymentReceipt.objects.get()
+        receipt_name = receipt.pdf_file.name
+        version_id = receipt.invoice_version_id
+        mail.outbox.clear()
+        response = self.client.post(reverse("payment_receipt_resend", args=[receipt.public_id]))
+        self.assertRedirects(response, reverse("invoice_detail", args=[self.invoice.public_id]))
+        self.assertEqual(PaymentReceipt.objects.count(), 1)
+        receipt.refresh_from_db()
+        self.assertEqual(receipt.pdf_file.name, receipt_name)
+        self.assertEqual(receipt.invoice_version_id, version_id)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_material_invoice_changes_create_preserved_revisions(self):
+        generate_and_store_invoice(self.invoice, generated_by=self.staff)
+        self.assertEqual(InvoiceVersion.objects.filter(invoice=self.invoice).count(), 1)
+        generate_and_store_invoice(self.invoice, generated_by=self.staff)
+        self.assertEqual(InvoiceVersion.objects.filter(invoice=self.invoice).count(), 1)
+        self.invoice.notes = "Updated customer note"
+        self.invoice.save(update_fields=["notes", "updated_at"])
+        generate_and_store_invoice(self.invoice, generated_by=self.staff)
+        revisions = list(self.invoice.versions.values_list("revision", flat=True))
+        self.assertEqual(revisions, [2, 1])
+    def test_booking_confirms_only_with_deposit_and_partner_coverage(self):
+        partner = Partner.objects.create(name="Akako Partner", contact_name="Almaz", email="partner@example.com", phone="555-0199", service_area="Washington, DC")
+        self.ceremony.assigned_partner = partner
+        self.ceremony.coverage_status = Ceremony.CoverageStatus.CONFIRMED
+        self.ceremony.save(update_fields=["assigned_partner", "coverage_status", "updated_at"])
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(
+                reverse("invoice_add_transaction", args=[self.invoice.public_id]),
+                {"amount": "400.00", "received_on": "2026-08-13", "method": "bank", "reference": self.invoice.number, "notes": "ACH"},
+            )
+        self.assertTrue(self.ceremony.milestones.filter(stage=BookingMilestone.Stage.BOOKING_CONFIRMED).exists())
+        self.assertTrue(Notification.objects.filter(kind=Notification.Kind.BOOKING_CONFIRMED).exists())
+
+    def test_full_invoice_payment_settles_deposit_and_final_balance(self):
+        self.client.post(
+            reverse("invoice_add_transaction", args=[self.invoice.public_id]),
+            {"amount": "700.00", "received_on": "2026-08-13", "method": "card", "reference": "card-payment", "notes": "Paid online"},
+        )
+        statuses = dict(self.ceremony.payments.values_list("payment_type", "status"))
+        self.assertEqual(statuses[Payment.PaymentType.DEPOSIT], Payment.Status.PAID)
+        self.assertEqual(statuses[Payment.PaymentType.FINAL], Payment.Status.PAID)
+        self.assertEqual(PaymentAllocation.objects.count(), 2)
+        self.assertTrue(self.ceremony.milestones.filter(stage=BookingMilestone.Stage.PAID_IN_FULL).exists())
+
+    def test_staff_workspace_displays_booking_progress(self):
+        response = self.client.get(reverse("ceremony_detail", args=[self.ceremony.public_id]))
+        self.assertContains(response, "Booking progress")
+        self.assertContains(response, "Initial payment pending")
+        self.assertContains(response, "Booking confirmed")
+    def test_central_finance_manager_has_invoice_payment_and_receipt_tabs(self):
+        self.client.post(
+            reverse("invoice_add_transaction", args=[self.invoice.public_id]),
+            {"amount": "400.00", "received_on": "2026-08-13", "method": "zelle", "reference": "ZELLE-400", "notes": ""},
+        )
+        invoice_page = self.client.get(reverse("invoice_list"))
+        self.assertContains(invoice_page, "Outstanding balance")
+        self.assertContains(invoice_page, "Payments received")
+        self.assertContains(invoice_page, "Official receipts")
+        self.assertContains(invoice_page, "Invoices")
+        self.assertContains(invoice_page, "Payments")
+        self.assertContains(invoice_page, "Receipts")
+
+        payment_page = self.client.get(reverse("invoice_list"), {"tab": "payments", "q": "ZELLE-400"})
+        self.assertContains(payment_page, "ZELLE-400")
+        self.assertContains(payment_page, "Initial deposit: $400.00")
+        self.assertContains(payment_page, self.invoice.number)
+
+        receipt = PaymentReceipt.objects.get()
+        receipt_page = self.client.get(reverse("invoice_list"), {"tab": "receipts", "q": receipt.number})
+        self.assertContains(receipt_page, receipt.number)
+        self.assertContains(receipt_page, reverse("payment_receipt_download", args=[receipt.public_id]))
+        self.assertContains(receipt_page, reverse("payment_receipt_resend", args=[receipt.public_id]))
+        self.assertContains(receipt_page, reverse("invoice_version_download", args=[receipt.invoice_version_id]))
+
+    def test_central_finance_manager_filters_payment_method_and_receipt_delivery(self):
+        self.client.post(
+            reverse("invoice_add_transaction", args=[self.invoice.public_id]),
+            {"amount": "400.00", "received_on": "2026-08-13", "method": "bank", "reference": "ACH-400", "notes": ""},
+        )
+        payment_page = self.client.get(reverse("invoice_list"), {"tab": "payments", "method": "bank"})
+        self.assertContains(payment_page, "ACH-400")
+        self.assertContains(payment_page, "Bank transfer / ACH")
+        receipt_page = self.client.get(reverse("invoice_list"), {"tab": "receipts", "delivery": "sent"})
+        self.assertContains(receipt_page, PaymentReceipt.objects.get().number)
+        missing_page = self.client.get(reverse("invoice_list"), {"tab": "receipts", "delivery": "not_sent"})
+        self.assertContains(missing_page, "No receipts match these filters.")
+    def test_non_staff_cannot_download_private_invoice(self):
+        self.client.logout()
+        response = self.client.get(reverse("invoice_download", args=[self.invoice.public_id]))
+        self.assertEqual(response.status_code, 302)
+
+
+
+
+

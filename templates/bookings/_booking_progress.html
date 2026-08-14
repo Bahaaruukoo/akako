@@ -1,0 +1,12 @@
+﻿<section class="booking-progress" aria-labelledby="booking-progress-title">
+  <div class="section-heading"><div><p class="eyebrow">Booking progress</p><h2 id="booking-progress-title">From acceptance to completion</h2></div></div>
+  <ol class="booking-progress-list">
+    {% for step in booking_progress %}
+      <li class="{% if step.reached %}is-reached{% endif %}{% if step.current %} is-current{% endif %}">
+        <span class="booking-progress-dot" aria-hidden="true"></span>
+        <span><strong>{{ step.label }}</strong>{% if step.reached_at %}<small>{{ step.reached_at|date:"M j, Y, g:i a" }}</small>{% elif step.current %}<small>Current stage</small>{% endif %}</span>
+      </li>
+    {% endfor %}
+  </ol>
+</section>
+

@@ -1,4 +1,4 @@
-from django.urls import path
+﻿from django.urls import path
 from allauth.account import views as account_views
 
 from . import views
@@ -50,6 +50,17 @@ urlpatterns = [
     path("payments/stripe/webhook/", views.stripe_webhook, name="stripe_webhook"),
     path("dashboard/", views.operations_dashboard, name="operations_dashboard"),
     path("dashboard/insights/", views.business_insights, name="business_insights"),
+    path("dashboard/invoices/", views.invoice_list, name="invoice_list"),
+    path("dashboard/invoices/new/", views.invoice_create, name="invoice_create"),
+    path("dashboard/invoices/<uuid:public_id>/", views.invoice_detail, name="invoice_detail"),
+    path("dashboard/invoices/<uuid:public_id>/edit/", views.invoice_edit, name="invoice_edit"),
+    path("dashboard/invoices/<uuid:public_id>/download/", views.invoice_download, name="invoice_download"),
+    path("dashboard/invoice-versions/<int:version_id>/download/", views.invoice_version_download, name="invoice_version_download"),
+    path("dashboard/payment-receipts/<uuid:public_id>/download/", views.payment_receipt_download, name="payment_receipt_download"),
+    path("dashboard/payment-receipts/<uuid:public_id>/resend/", views.payment_receipt_resend, name="payment_receipt_resend"),
+    path("dashboard/invoices/<uuid:public_id>/payments/", views.invoice_add_transaction, name="invoice_add_transaction"),
+    path("dashboard/invoices/<uuid:public_id>/email/", views.invoice_email, name="invoice_email"),
+    path("dashboard/invoices/<uuid:public_id>/void/", views.invoice_void, name="invoice_void"),
     path("dashboard/content/", views.content_library, name="content_library"),
     path("dashboard/content/community/<str:content_type>/<int:item_id>/<str:decision>/", views.moderate_community_content, name="moderate_community_content"),
     path("dashboard/content/published/<str:content_type>/<int:item_id>/<str:field>/", views.toggle_published_content, name="toggle_published_content"),
@@ -87,3 +98,4 @@ urlpatterns = [
     path("dashboard/partners/<int:partner_id>/", views.manage_partner, name="manage_partner"),
     path("dashboard/partner-documents/<int:document_id>/<str:decision>/", views.review_partner_document, name="review_partner_document"),
 ]
+

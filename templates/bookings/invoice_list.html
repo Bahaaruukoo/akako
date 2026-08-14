@@ -1,0 +1,82 @@
+﻿{% extends "base.html" %}
+{% block title %}Invoices & Payments | Akako House{% endblock %}
+{% block content %}
+<div class="app-shell">
+  {% include "bookings/_dashboard_sidebar.html" with active_nav="invoices" %}
+  <main class="dashboard finance-manager">
+    <header class="dashboard-header">
+      <div><p class="eyebrow">Financial records</p><h1>Invoices &amp; Payments</h1><p class="workspace-subtitle">Manage invoices, payment transactions, official receipts, downloads, and delivery history.</p></div>
+      <a class="button primary" href="{% url 'invoice_create' %}">Create Invoice</a>
+    </header>
+    {% if messages %}{% for message in messages %}<p class="notice {{ message.tags }}">{{ message }}</p>{% endfor %}{% endif %}
+
+    <section class="metric-grid finance-summary">
+      <article><span>Outstanding balance</span><strong>${{ summary.outstanding|floatformat:2 }}</strong></article>
+      <article><span>Overdue invoices</span><strong>{{ summary.overdue }}</strong></article>
+      <article><span>Payments received</span><strong>${{ summary.received|floatformat:2 }}</strong></article>
+      <article><span>Official receipts</span><strong>{{ summary.receipts }}</strong></article>
+    </section>
+
+    <nav class="finance-tabs" aria-label="Financial record views">
+      <a{% if active_tab == 'invoices' %} class="active"{% endif %} href="?tab=invoices">Invoices</a>
+      <a{% if active_tab == 'payments' %} class="active"{% endif %} href="?tab=payments">Payments</a>
+      <a{% if active_tab == 'receipts' %} class="active"{% endif %} href="?tab=receipts">Receipts</a>
+    </nav>
+
+    <section class="work-panel">
+      <form method="get" class="finance-filter-bar">
+        <input type="hidden" name="tab" value="{{ active_tab }}">
+        <label><span>Search</span><input name="q" value="{{ query }}" placeholder="Customer, invoice, receipt, or reference"></label>
+        {% if active_tab == 'invoices' %}
+          <label><span>Status</span><select name="status"><option value="">All statuses</option>{% for value,label in statuses %}<option value="{{ value }}"{% if selected_status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+        {% elif active_tab == 'payments' %}
+          <label><span>Method</span><select name="method"><option value="">All methods</option>{% for value,label in methods %}<option value="{{ value }}"{% if selected_method == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+        {% else %}
+          <label><span>Method</span><select name="method"><option value="">All methods</option>{% for value,label in methods %}<option value="{{ value }}"{% if selected_method == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+          <label><span>Email delivery</span><select name="delivery"><option value="">All receipts</option><option value="sent"{% if selected_delivery == 'sent' %} selected{% endif %}>Emailed</option><option value="not_sent"{% if selected_delivery == 'not_sent' %} selected{% endif %}>Not emailed</option></select></label>
+        {% endif %}
+        <label><span>From</span><input type="date" name="date_from" value="{{ date_from }}"></label>
+        <label><span>To</span><input type="date" name="date_to" value="{{ date_to }}"></label>
+        <button class="button secondary" type="submit">Filter</button>
+        <a class="table-link muted" href="?tab={{ active_tab }}">Clear</a>
+      </form>
+
+      <div class="finance-table-wrap">
+      {% if active_tab == 'payments' %}
+        <div class="finance-table payment-manager-table">
+          <div class="finance-row finance-head"><span>Payment</span><span>Customer</span><span>Invoice</span><span>Method / Reference</span><span>Allocation</span><span>Receipt</span></div>
+          {% for item in payments %}<div class="finance-row">
+            <span><strong>${{ item.amount }}</strong><small>{{ item.received_on }}</small></span>
+            <span><strong>{{ item.invoice.customer_name }}</strong><small>{{ item.invoice.customer_email }}</small></span>
+            <span><a class="table-link" href="{% url 'invoice_detail' item.invoice.public_id %}">{{ item.invoice.number }}</a><small>{{ item.invoice.ceremony.quote.event_date }}</small></span>
+            <span>{{ item.get_method_display }}<small>{{ item.reference|default:"No reference" }}</small></span>
+            <span>{% for allocation in item.allocations.all %}<small>{{ allocation.payment.get_payment_type_display }}: ${{ allocation.amount }}</small>{% empty %}<small>Unallocated</small>{% endfor %}</span>
+            <span>{% if item.receipt %}<a class="table-link" href="{% url 'payment_receipt_download' item.receipt.public_id %}">{{ item.receipt.number }}</a>{% if item.receipt.emailed_at %}<small>Emailed {{ item.receipt.emailed_at }}</small>{% else %}<small>Not emailed</small>{% endif %}{% else %}<small>Receipt pending</small>{% endif %}</span>
+          </div>{% empty %}<p class="empty-state">No payments match these filters.</p>{% endfor %}
+        </div>
+      {% elif active_tab == 'receipts' %}
+        <div class="finance-table receipt-manager-table">
+          <div class="finance-row finance-head"><span>Receipt</span><span>Customer</span><span>Payment</span><span>Invoice</span><span>Balance after</span><span>Delivery</span><span>Actions</span></div>
+          {% for receipt in receipts %}<div class="finance-row">
+            <span><strong>{{ receipt.number }}</strong><small>{{ receipt.payment_date }}</small></span>
+            <span><strong>{{ receipt.transaction.invoice.customer_name }}</strong><small>{{ receipt.transaction.invoice.customer_email }}</small></span>
+            <span><strong>${{ receipt.amount }}</strong><small>{{ receipt.get_payment_method_display }}</small><small>{{ receipt.payment_reference }}</small></span>
+            <span><a class="table-link" href="{% url 'invoice_detail' receipt.transaction.invoice.public_id %}">{{ receipt.transaction.invoice.number }}</a><small>Revision {{ receipt.invoice_version.revision }}</small></span>
+            <span>${{ receipt.balance_after }}<small>{{ receipt.booking_status }}</small></span>
+            <span>{% if receipt.emailed_at %}<mark>Emailed</mark><small>{{ receipt.emailed_at }}</small>{% else %}<mark>Not emailed</mark>{% endif %}</span>
+            <span class="finance-actions"><a class="table-link" href="{% url 'payment_receipt_download' receipt.public_id %}">Download</a><form method="post" action="{% url 'payment_receipt_resend' receipt.public_id %}">{% csrf_token %}<button class="table-link" type="submit">Resend</button></form><a class="table-link muted" href="{% url 'invoice_version_download' receipt.invoice_version.pk %}">Invoice v{{ receipt.invoice_version.revision }}</a></span>
+          </div>{% empty %}<p class="empty-state">No receipts match these filters.</p>{% endfor %}
+        </div>
+      {% else %}
+        <div class="finance-table invoice-manager-table">
+          <div class="finance-row finance-head"><span>Invoice</span><span>Customer</span><span>Event</span><span>Total</span><span>Paid</span><span>Balance</span><span>Status</span></div>
+          {% for invoice in invoices %}<a class="finance-row" href="{% url 'invoice_detail' invoice.public_id %}">
+            <span><strong>{{ invoice.number }}</strong><small>{{ invoice.issue_date }}</small></span><span><strong>{{ invoice.customer_name }}</strong><small>{{ invoice.customer_email }}</small></span><span>{{ invoice.ceremony.quote.event_date }}<small>{{ invoice.ceremony.quote.get_event_type_display }}</small></span><span>${{ invoice.total_amount }}</span><span>${{ invoice.amount_paid }}</span><span>${{ invoice.balance_due }}</span><span><mark>{{ invoice.get_status_display }}</mark></span>
+          </a>{% empty %}<p class="empty-state">No invoices match these filters.</p>{% endfor %}
+        </div>
+      {% endif %}
+      </div>
+    </section>
+  </main>
+</div>
+{% endblock %}
